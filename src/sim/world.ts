@@ -35,6 +35,7 @@ export function createWorld(seed: number, custom?: Map<string, Terrain>): World 
     claimed: new Set(),
     deposits: new Map(),
     won: false,
+    tutorial: 0,
     monsters: [],
     warriors: [],
     caravan: null,

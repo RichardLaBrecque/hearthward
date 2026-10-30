@@ -65,6 +65,7 @@ interface SaveData {
   claimed?: string[];
   deposits?: [string, number][];
   won?: boolean;
+  tutorial?: number | null;
 }
 
 // Terrain is regenerated from the seed; villagers resume from their last hex
@@ -100,6 +101,7 @@ export function serialize(w: World): string {
     claimed: [...w.claimed],
     deposits: [...w.deposits],
     won: w.won,
+    tutorial: w.tutorial,
   };
   return JSON.stringify(data);
 }
@@ -144,6 +146,7 @@ export function deserialize(json: string): World | null {
     claimed: new Set(data.claimed ?? []),
     deposits: new Map(data.deposits ?? []),
     won: data.won ?? false,
+    tutorial: data.tutorial ?? null, // saves from before the tutorial skip it
   });
   // Saves from before roads had joins: join every pair of touching roads, as they used to behave.
   // Terrain comes back from the seed, so re-clear forest and hills that were worked out.

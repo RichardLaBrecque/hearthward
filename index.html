@@ -375,6 +375,62 @@
         right: 3px;
       }
 
+      .tutorial {
+        position: absolute;
+        left: 12px;
+        top: 76px;
+        width: 260px;
+        padding: 9px 12px;
+        font-size: 14px;
+        line-height: 1.4;
+      }
+      .tutorial .step {
+        font-size: 11px;
+        font-variant: small-caps;
+        letter-spacing: 0.05em;
+      }
+      .tutorial h3 {
+        margin: 0 0 4px;
+        font-size: 16px;
+        font-weight: 600;
+      }
+      .tutorial p {
+        margin: 0 0 6px;
+      }
+      .tutorial .buttons {
+        display: flex;
+        justify-content: flex-end;
+      }
+      button.link {
+        border: none;
+        background: transparent;
+        font-size: 12px;
+        font-style: italic;
+        text-decoration: underline;
+        opacity: 0.7;
+        padding: 0;
+      }
+      button.link:hover {
+        background: transparent;
+        opacity: 1;
+      }
+      /* The tutorial points at the tool (and tab) it wants next */
+      .tool.hint,
+      .tab.hint {
+        animation: hint-pulse 1.2s ease-in-out infinite;
+      }
+      @keyframes hint-pulse {
+        0%,
+        100% {
+          box-shadow: 0 0 0 0 rgba(168, 116, 26, 0);
+          border-color: var(--ochre);
+        }
+        50% {
+          box-shadow: 0 0 0 3px rgba(168, 116, 26, 0.45);
+          border-color: var(--ochre);
+        }
+      }
+
       .inspector {
         position: absolute;
         left: 12px;

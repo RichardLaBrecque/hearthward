@@ -116,6 +116,7 @@ export interface World {
   claimed: Set<string>; // ruins searched and homesteads settled
   deposits: Map<string, number>; // what's left in worked forest, hills and iron veins
   won: boolean; // the Town Charter has been granted
+  tutorial: number | null; // opening tutorial step; null once finished or skipped
   monsters: Monster[];
   warriors: Warrior[];
   caravan: Caravan | null;

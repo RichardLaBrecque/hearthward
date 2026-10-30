@@ -21,6 +21,7 @@ import { hotkeyFor, type Command } from './keymap';
 import { ledgerCells, ledgerTip, Trend, type LedgerKey } from './ledger';
 import { SPEEDS, toolKey, type Tool, type UiState } from './state';
 import { groupOf, TOOL_GROUPS } from './toolGroups';
+import { advanceTutorial, TUTORIAL, tutorialStep, type TutorialWatch } from './tutorial';
 
 const LOG_VISIBLE = 6;
 const LOG_FADE = 40; // sim seconds
@@ -64,6 +65,8 @@ export class Hud {
   private tipKey: LedgerKey | null = null;
   private trend = new Trend();
   private modal = el('div', 'modal hidden');
+  private tutorial = el('div', 'tutorial panel hidden');
+  private watch: TutorialWatch = { woodLow: Infinity };
   private buttons: { def: ToolButton; node: HTMLButtonElement }[] = [];
   private cache = new Map<HTMLElement, string>();
   private overlayBtn!: HTMLButtonElement;
@@ -72,7 +75,7 @@ export class Hud {
   private lastTool = 'none';
 
   constructor(root: HTMLElement, private actions: HudActions) {
-    root.append(this.top, this.tools, this.inspector, this.log, this.market, this.tip, this.modal);
+    root.append(this.top, this.tools, this.inspector, this.tutorial, this.log, this.market, this.tip, this.modal);
     this.top.append(this.stats, this.calendar, this.controls);
     this.buildToolbar();
     // Hover cards for the top bar's numbers.
@@ -95,6 +98,13 @@ export class Hud {
       if (!t) return;
       const [good, dir] = t.dataset.trade!.split(':') as [TradeGood, 'buy' | 'sell'];
       this.actions.trade(good, dir);
+    });
+    this.tutorial.addEventListener('click', (e) => {
+      const act = (e.target as HTMLElement).closest<HTMLElement>('[data-act]')?.dataset.act;
+      if ((act === 'skip' || act === 'finish') && this.lastWorld) {
+        this.lastWorld.tutorial = null;
+        this.updateTutorial(this.lastWorld);
+      }
     });
     this.top.addEventListener('click', (e) => {
       const t = (e.target as HTMLElement).closest('[data-act]') as HTMLElement | null;
@@ -173,7 +183,7 @@ export class Hud {
 
   // Keep the tabs in step with the game: follow a hotkeyed tool to its tab, mark
   // the tab holding the active tool, and dim tabs whose tools are all locked.
-  private updateTabs(ui: UiState, level: number): void {
+  private updateTabs(ui: UiState, level: number, pointAt?: BuildingType): void {
     const active = toolKey(ui.tool);
     const activeGroup = ui.tool?.kind === 'build' ? groupOf(ui.tool.type) : undefined;
     if (active !== this.lastTool) {
@@ -183,6 +193,7 @@ export class Hud {
     for (const g of TOOL_GROUPS) {
       const tab = this.tabs.get(g.id)!;
       tab.classList.toggle('holds-active', g.id === activeGroup);
+      tab.classList.toggle('hint', !!pointAt && g.id === groupOf(pointAt) && g.id !== this.group);
       tab.classList.toggle('locked', g.types.every((t) => (DEFS[t].level ?? 1) > level));
     }
   }
@@ -226,11 +237,14 @@ export class Hud {
     this.lastWorld = w;
     this.trend.sample(w);
     this.updateTop(w, ui);
+    this.updateTutorial(w);
     this.showTip();
     const active = toolKey(ui.tool);
     const level = hearthLevel(w);
-    this.updateTabs(ui, level);
+    const pointAt = tutorialStep(w)?.tool;
+    this.updateTabs(ui, level, pointAt);
     for (const { def, node } of this.buttons) {
+      node.classList.toggle('hint', !!pointAt && toolKey(def.tool) === pointAt && pointAt !== active);
       const need = def.tool?.kind === 'build' ? DEFS[def.tool.type].level ?? 1 : 1;
       const locked = need > level;
       node.classList.toggle('active', toolKey(def.tool) === active);
@@ -254,6 +268,26 @@ export class Hud {
         .filter((e) => w.time - e.time < LOG_FADE)
         .map((e) => `<div class="msg ${e.tone}" style="opacity:${1 - ((w.time - e.time) / LOG_FADE) * 0.7}">${esc(e.text)}</div>`)
         .join(''),
+    );
+  }
+
+  private updateTutorial(w: World): void {
+    advanceTutorial(w, this.watch);
+    const step = tutorialStep(w);
+    this.tutorial.classList.toggle('hidden', !step);
+    if (!step) return;
+    const n = w.tutorial! + 1;
+    const last = n === TUTORIAL.length;
+    const key = step.tool && hotkeyFor((c) => c.type === 'tool' && c.tool?.kind === 'build' && c.tool.type === step.tool);
+    const hint = step.hint?.(w);
+    this.set(
+      this.tutorial,
+      `<div class="dim step">${last ? 'Tutorial complete' : `Step ${n} of ${TUTORIAL.length - 1}`}</div>` +
+        `<h3>${step.title}${key ? ` <kbd>${key}</kbd>` : ''}</h3><p>${step.body}</p>` +
+        (hint ? `<p class="warn">${hint}</p>` : '') +
+        (last
+          ? '<div class="buttons"><button class="primary" data-act="finish">Begin</button></div>'
+          : '<div class="buttons"><button class="link" data-act="skip">Skip tutorial</button></div>'),
     );
   }
 

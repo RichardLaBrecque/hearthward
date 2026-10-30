@@ -15,6 +15,10 @@ npm run build    # static build in dist/ (relative paths, works offline)
 
 Requires Node 16+.
 
+## Tutorial
+
+A new hamlet opens with a short guided tutorial in the top-left panel: lay a road from the hearth, build a woodcutter by the forest, watch the wood come home, then build a well against fire. Each step completes on its own when you have done it, and the tool it wants pulses in the toolbar. Skip it at any time. Saves from before the tutorial existed skip it.
+
 ## Controls
 
 | Key | Action |
