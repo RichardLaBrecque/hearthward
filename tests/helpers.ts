@@ -16,7 +16,7 @@ export function flatWorld(radius = 8, overrides: Record<string, Terrain> = {}) {
   const w = createWorld(1, terrain);
   for (const k of terrain.keys()) w.revealed.add(k);
   hearth(w).tier = DEFS.hearth.tiers.length - 1;
-  setGoods(w, { food: 1000, wood: 1000, stone: 1000, iron: 1000, coin: 1000 });
+  setGoods(w, { food: 1000, wood: 1000, stone: 1000, iron: 1000, plank: 1000, coin: 1000 });
   return w;
 }
 

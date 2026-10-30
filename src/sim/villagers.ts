@@ -2,7 +2,8 @@ import { neighborKeys } from '../hex';
 import { DEFS } from './buildings';
 import { releaseJob } from './jobs';
 import { arriveHaul, resumeHaul, startHaul } from './haul';
-import { accepts, connectedStores, dropOffRoom, isGeneralStore, put, roomAt } from './storage';
+import type { Resource } from './buildings';
+import { accepts, connectedStores, dropOffRoom, isGeneralStore, put, roomAt, stockAt, takeFrom } from './storage';
 import { deplete, depletes, FERTILE_BONUS, gatherBonus, SOIL, sourcesOf } from './land';
 import { findPath, moveCost } from './path';
 import { calendar, FARM_SEASON_MULT, WINTER } from './seasons';
@@ -27,9 +28,14 @@ export function blockedReason(w: World, b: Building): string | null {
   if (b.type === 'farm' && calendar(w.time).season === WINTER) return 'fallow for winter';
   if (depletes(b) && !sourcesOf(w, b).length) return EXHAUSTED[b.type] ?? 'nothing left to work';
   const good = DEFS[b.type].produces;
-  if (good && dropOffRoom(w, good) <= 0) return `no room for ${good} at the hearth or storehouses`;
+  if (good && dropOffRoom(w, good) <= 0) return `no room for ${PLURAL[good] ?? good} at the hearth or storehouses`;
+  const short = (Object.keys(DEFS[b.type].consumes ?? {}) as Resource[]).find((r) => stockAt(b, r) < DEFS[b.type].consumes![r]!);
+  if (short) return `waiting for ${short}`;
   return null;
 }
+
+export const TOOL_BONUS = 0.25;
+const PLURAL: Partial<Record<Resource, string>> = { plank: 'planks', tool: 'tools' };
 
 export function cycleYield(w: World, b: Building): number {
   let amount = tierOf(b).yield ?? 0;
@@ -41,6 +47,7 @@ export function cycleYield(w: World, b: Building): number {
   }
   if (depletes(b)) amount *= gatherBonus(sourcesOf(w, b).length);
   if (b.type === 'fishery' && calendar(w.time).season === WINTER) amount *= WINTER_CATCH;
+  if (stockAt(b, 'tool') >= 1) amount *= 1 + TOOL_BONUS;
   return amount;
 }
 
@@ -80,6 +87,8 @@ function work(w: World, v: Villager, dt: number): void {
   v.timer -= dt;
   if (v.timer > 0) return;
   const amount = cycleYield(w, b);
+  const used = DEFS[b.type].consumes ?? {};
+  for (const r of Object.keys(used) as Resource[]) takeFrom(w, b, r, used[r]!);
   v.carry = { res: DEFS[b.type].produces!, amount };
   if (depletes(b)) deplete(w, b, amount);
   stop(v);

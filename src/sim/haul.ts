@@ -15,6 +15,7 @@ import {
   connectedStores,
   holdsAt,
   isGeneralStore,
+  isStore,
   put,
   roomAt,
   stockAt,
@@ -32,7 +33,9 @@ export const PANTRY_DAYS = 3; // days of food porters keep in each home
 export const WOOD_DAYS = 1.5;
 const LOOK_INTERVAL = 1; // seconds between an idle hauler's looks for work
 const PANTRY_PRIORITY = 0; // pantries, then upgrades, then tidying stores
+const INPUT_PRIORITY = 25; // workshop materials, just after pantries
 const SUPPLY_PRIORITY = 50;
+const TOOL_PRIORITY = 75; // tools to workplaces, after upgrades
 const STORE_PRIORITY = 100;
 
 export const canHaul = (w: World, v: Villager): boolean => {
@@ -128,7 +131,22 @@ export function findTask(w: World, v: Villager): Haul | null {
     }
   }
 
-  // 2. Supplies for upgrades under way, one load at a time from the nearest store.
+  // 2. Workshop materials, and tools for workplaces, from the nearest store that has them.
+  for (const b of w.buildings.values()) {
+    if (isStore(b) || !isConnected(w, b.id)) continue;
+    const wants = [...Object.keys(tierOf(b).inputs ?? {}), ...(holdsAt(b, 'tool') ? ['tool'] : [])] as Resource[];
+    for (const r of wants) {
+      const need = holdsAt(b, r) - stockAt(b, r) - promised(w, b.id, r, 'to');
+      if (need < 1) continue;
+      const source = stores
+        .filter((s) => available(w, s, r, PANTRY_DAYS) >= 1)
+        .sort((a, c) => keyDistance(a.at, b.at) - keyDistance(c.at, b.at))[0];
+      const priority = r === 'tool' ? TOOL_PRIORITY : INPUT_PRIORITY;
+      if (source) consider(source, b, r, Math.min(PORTER_CARRY, need, available(w, source, r, PANTRY_DAYS)), priority);
+    }
+  }
+
+  // 3. Supplies for upgrades under way, one load at a time from the nearest store.
   for (const b of w.buildings.values()) {
     if (!b.order || !isConnected(w, b.id)) continue;
     for (const r of STORED) {
@@ -143,7 +161,7 @@ export function findTask(w: World, v: Villager): Haul | null {
     }
   }
 
-  // 3. Goods waiting at the hearth or a storehouse that a dedicated store could take.
+  // 4. Goods waiting at the hearth or a storehouse that a dedicated store could take.
   for (const from of stores) {
     if (!isGeneralStore(from)) continue;
     for (const r of STORED) {

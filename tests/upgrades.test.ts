@@ -116,8 +116,8 @@ describe('supplied upgrades', () => {
     setGood(w, 'wood', 50); // within what the stores can take back
     const { coin, wood } = w.res;
     orderUpgrade(w, barracks);
-    supply(w, barracks, 'wood', take(w, 'wood', 12, barracks.at));
-    expect(w.res.wood).toBe(wood - 12);
+    supply(w, barracks, 'wood', take(w, 'wood', 8, barracks.at));
+    expect(w.res.wood).toBe(wood - 8);
     cancelUpgrade(w, barracks);
     expect(barracks.order).toBeUndefined();
     expect(w.res.wood).toBe(wood);

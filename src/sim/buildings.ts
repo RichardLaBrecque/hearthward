@@ -1,7 +1,7 @@
 import { GROUND, HIGHLAND, type FeatureKind, type Terrain } from '../map';
 
-export type Resource = 'food' | 'wood' | 'stone' | 'iron' | 'coin';
-export const RESOURCES: readonly Resource[] = ['food', 'wood', 'stone', 'iron', 'coin'];
+export type Resource = 'food' | 'wood' | 'stone' | 'iron' | 'plank' | 'tool' | 'coin';
+export const RESOURCES: readonly Resource[] = ['food', 'wood', 'stone', 'iron', 'plank', 'tool', 'coin'];
 export type Cost = Partial<Record<Resource, number>>;
 
 export type BuildingType =
@@ -24,7 +24,9 @@ export type BuildingType =
   | 'woodshed'
   | 'stoneyard'
   | 'oreshed'
-  | 'chapel';
+  | 'chapel'
+  | 'sawmill'
+  | 'smithy';
 
 export interface Tier {
   label: string;
@@ -35,6 +37,7 @@ export interface Tier {
   speed?: number; // roads: walking speed multiplier
   stores?: Partial<Record<Resource, number>>; // room this building adds for each good
   pantry?: Partial<Record<Resource, number>>; // homes and barracks: upkeep supplies kept on hand
+  inputs?: Partial<Record<Resource, number>>; // workshops: what porters keep stocked for the work
   warriors?: number; // barracks: soldiers it keeps
   radius?: number; // barracks: patrol radius
   needs?: readonly Prerequisite[]; // nearby buildings required before upgrading into this tier
@@ -58,6 +61,7 @@ export interface BuildingDef {
   near?: readonly Terrain[]; // must sit on or touch one of these terrains
   nearFeature?: FeatureKind; // must sit on or touch this discovery
   produces?: Resource;
+  consumes?: Cost; // workshops: used up each work cycle
   workTime?: number; // seconds per work cycle
   storage?: boolean; // villagers deposit carried goods here
   accepts?: readonly Resource[]; // storage that only takes some goods
@@ -90,9 +94,23 @@ export const DEFS: Record<BuildingType, BuildingDef> = {
     buildable: false,
     blurb: 'Heart of the settlement. Grow your people to raise it, unlocking new buildings and upgrades.',
     tiers: [
-      { label: 'Hearth', cost: {}, housing: 4, workers: 1, stores: { food: 100, wood: 100, stone: 60, iron: 40 } },
-      { label: 'Longhouse', cost: { wood: 40, stone: 20 }, pop: 8, housing: 6, workers: 2, stores: { food: 150, wood: 150, stone: 100, iron: 60 } },
-      { label: 'Moot Hall', cost: { wood: 60, stone: 50, coin: 30 }, pop: 16, housing: 8, workers: 2, stores: { food: 200, wood: 200, stone: 150, iron: 80 } },
+      { label: 'Hearth', cost: {}, housing: 4, workers: 1, stores: { food: 100, wood: 100, stone: 60, iron: 40, plank: 30, tool: 10 } },
+      {
+        label: 'Longhouse',
+        cost: { wood: 40, stone: 20 },
+        pop: 8,
+        housing: 6,
+        workers: 2,
+        stores: { food: 150, wood: 150, stone: 100, iron: 60, plank: 50, tool: 15 },
+      },
+      {
+        label: 'Moot Hall',
+        cost: { wood: 60, stone: 50, coin: 30 },
+        pop: 16,
+        housing: 8,
+        workers: 2,
+        stores: { food: 200, wood: 200, stone: 150, iron: 80, plank: 80, tool: 20 },
+      },
     ],
   },
   road: {
@@ -126,7 +144,7 @@ export const DEFS: Record<BuildingType, BuildingDef> = {
       },
       {
         label: 'Townhouse',
-        cost: { wood: 20, stone: 20, iron: 5 },
+        cost: { wood: 10, plank: 8, stone: 20, iron: 5 },
         housing: 7,
         pantry: { food: 21, wood: 20 },
         level: 3,
@@ -197,7 +215,31 @@ export const DEFS: Record<BuildingType, BuildingDef> = {
     flammable: true,
     buildable: true,
     blurb: 'A small store for every good and a drop-off for workers. Its porters move goods on to dedicated stores and supply homes.',
-    tiers: [{ label: 'Storehouse', cost: { wood: 20, stone: 5 }, workers: 2, stores: { food: 40, wood: 40, stone: 40, iron: 20 } }],
+    tiers: [{ label: 'Storehouse', cost: { wood: 20, stone: 5 }, workers: 2, stores: { food: 40, wood: 40, stone: 40, iron: 20, plank: 30, tool: 10 } }],
+  },
+  sawmill: {
+    name: 'Sawmill',
+    level: 2,
+    terrain: GROUND,
+    produces: 'plank',
+    consumes: { wood: 2 },
+    workTime: 10,
+    flammable: true,
+    buildable: true,
+    blurb: 'Saws 2 wood into a plank. Porters bring it wood; finer buildings need planks.',
+    tiers: [{ label: 'Sawmill', cost: { wood: 20, stone: 10 }, workers: 2, yield: 1, inputs: { wood: 10 } }],
+  },
+  smithy: {
+    name: 'Smithy',
+    level: 3,
+    terrain: GROUND,
+    produces: 'tool',
+    consumes: { iron: 1, wood: 1 },
+    workTime: 20,
+    flammable: true,
+    buildable: true,
+    blurb: 'Forges a tool from iron and wood. Workplaces with tools on hand work 25% faster.',
+    tiers: [{ label: 'Smithy', cost: { wood: 25, stone: 20, iron: 5 }, workers: 1, yield: 1, inputs: { iron: 5, wood: 5 } }],
   },
   chapel: {
     name: 'Chapel',
@@ -258,7 +300,7 @@ export const DEFS: Record<BuildingType, BuildingDef> = {
     blurb: 'A great store of timber. Only wood is brought here.',
     tiers: [
       { label: 'Woodshed', cost: { wood: 20 }, stores: { wood: 150 } },
-      { label: 'Lumber yard', cost: { wood: 30, stone: 15 }, stores: { wood: 300 }, level: 3 },
+      { label: 'Lumber yard', cost: { wood: 20, plank: 10, stone: 15 }, stores: { wood: 300 }, level: 3 },
     ],
   },
   stoneyard: {
@@ -303,7 +345,7 @@ export const DEFS: Record<BuildingType, BuildingDef> = {
     blurb: 'Invites warriors to the hearth. They patrol nearby and fight monsters.',
     tiers: [
       { label: 'Barracks', cost: { wood: 30, stone: 20 }, warriors: 2, radius: 4, pantry: { food: 12 } },
-      { label: 'Garrison', cost: { wood: 20, stone: 30, iron: 10, coin: 40 }, warriors: 3, radius: 5, pantry: { food: 16 }, level: 3 },
+      { label: 'Garrison', cost: { wood: 10, plank: 10, stone: 30, iron: 10, coin: 40 }, warriors: 3, radius: 5, pantry: { food: 16 }, level: 3 },
     ],
   },
   mine: {
@@ -343,7 +385,7 @@ export const DEFS: Record<BuildingType, BuildingDef> = {
     blurb: 'A great work for a chartered town. Raise it in three stages with the Upgrade tool.',
     tiers: [
       { label: 'Cathedral foundations', cost: { wood: 40, stone: 60 } },
-      { label: 'Cathedral nave', cost: { wood: 60, stone: 80, iron: 20, coin: 50 } },
+      { label: 'Cathedral nave', cost: { wood: 30, plank: 20, stone: 80, iron: 20, coin: 50 } },
       { label: 'Cathedral', cost: { stone: 100, iron: 40, coin: 100 } },
     ],
   },
@@ -368,6 +410,8 @@ export const BUILD_ORDER: readonly BuildingType[] = [
   'barracks',
   'fishery',
   'mine',
+  'sawmill',
+  'smithy',
   'cathedral',
 ];
 

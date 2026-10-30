@@ -5,9 +5,9 @@ import { calendar, DAY_LENGTH } from './seasons';
 import type { Building, Caravan, TradeGood, World } from './types';
 import { log } from './world';
 
-export const TRADE_GOODS: readonly TradeGood[] = ['food', 'wood', 'stone', 'iron'];
+export const TRADE_GOODS: readonly TradeGood[] = ['food', 'wood', 'stone', 'iron', 'plank'];
 export const LOT = 10; // units per trade
-const BASE_PRICE: Record<TradeGood, number> = { food: 10, wood: 10, stone: 20, iron: 45 }; // coin per lot
+const BASE_PRICE: Record<TradeGood, number> = { food: 10, wood: 10, stone: 20, iron: 45, plank: 25 }; // coin per lot
 const SELL_RATIO = 0.6; // the trader pays this share of their asking price
 const STAY = DAY_LENGTH * 2;
 const GAP_MIN = DAY_LENGTH * 4;

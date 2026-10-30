@@ -444,6 +444,16 @@ export class Hud {
         if (b.type === 'storehouse') lines.push('<div class="dim">Porters move its goods on to dedicated stores.</div>');
         if (DEFS[b.type].accepts) lines.push('<div class="dim">Filled by porters from the hearth and storehouses.</div>');
       }
+      // Workshops: the materials porters keep on hand. Workplaces: their tools.
+      if (tier.inputs) {
+        const held = Object.keys(tier.inputs).map((r) => `${Math.floor(stockAt(b, r as Resource))}/${holdsAt(b, r as Resource)} ${r}`);
+        const per = Object.entries(DEFS[b.type].consumes ?? {}).map(([r, n]) => `${n} ${r}`).join(' + ');
+        lines.push(`<div>Materials: ${held.join(' · ')}</div><div class="dim">Uses ${per} a cycle</div>`);
+      }
+      const tools = Math.floor(stockAt(b, 'tool'));
+      if (tools && holdsAt(b, 'tool')) {
+        lines.push(`<div class="good">Tools ${tools}/${holdsAt(b, 'tool')}: working 25% faster</div>`);
+      }
       if (b.type === 'market') {
         lines.push(
           w.caravan

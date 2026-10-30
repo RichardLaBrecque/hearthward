@@ -46,6 +46,8 @@ export const BUILDING_WASH: Record<BuildingType, string> = {
   oreshed: '#b9b5ad',
   cathedral: '#e6dcc3',
   chapel: '#e3d8bd',
+  sawmill: '#d4b98c',
+  smithy: '#c4b9a8',
 };
 
 export const FLOOD_WASH = 'rgba(96,132,148,0.5)';
@@ -58,6 +60,8 @@ export const RESOURCE_WASH: Record<Resource, string> = {
   wood: '#7a4f28',
   stone: '#9a968c',
   iron: '#5d6670',
+  plank: '#c99a5e',
+  tool: '#7d848c',
   coin: '#c9a227',
 };
 

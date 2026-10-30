@@ -785,6 +785,85 @@ const GLYPHS: Record<Glyph, (ctx: Ctx) => void> = {
     fillStroke(ctx, LAMPLIGHT);
     archDoor(ctx, 0.46, 0.18, 0.28, TIMBER);
   },
+  sawmill(ctx) {
+    // A log on trestles under an open roof, a toothed saw blade, sawn planks stacked.
+    ctx.beginPath();
+    ctx.moveTo(-0.56, -0.18);
+    ctx.lineTo(-0.36, -0.46);
+    ctx.lineTo(0.36, -0.46);
+    ctx.lineTo(0.56, -0.18);
+    ctx.closePath();
+    fillStroke(ctx, '#a35a32');
+    ctx.beginPath();
+    ctx.moveTo(-0.46, -0.18);
+    ctx.lineTo(-0.46, 0.44);
+    ctx.moveTo(0.46, -0.18);
+    ctx.lineTo(0.46, 0.44);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.rect(-0.4, -0.04, 0.62, 0.14);
+    fillStroke(ctx, '#c9a875');
+    ctx.beginPath();
+    ctx.moveTo(-0.3, 0.1);
+    ctx.lineTo(-0.36, 0.3);
+    ctx.moveTo(-0.3, 0.1);
+    ctx.lineTo(-0.24, 0.3);
+    ctx.moveTo(0.12, 0.1);
+    ctx.lineTo(0.06, 0.3);
+    ctx.moveTo(0.12, 0.1);
+    ctx.lineTo(0.18, 0.3);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(0.3, 0.03, 0.15, 0, Math.PI * 2);
+    fillStroke(ctx, '#b9b5ad');
+    ctx.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * Math.PI * 2;
+      ctx.moveTo(0.3 + Math.cos(a) * 0.15, 0.03 + Math.sin(a) * 0.15);
+      ctx.lineTo(0.3 + Math.cos(a + 0.2) * 0.2, 0.03 + Math.sin(a + 0.2) * 0.2);
+    }
+    ctx.stroke();
+    ctx.lineWidth = 0.04;
+    for (const y of [0.32, 0.4]) {
+      ctx.beginPath();
+      ctx.rect(-0.1, y, 0.44, 0.07);
+      fillStroke(ctx, RESOURCE_WASH.plank);
+    }
+  },
+  smithy(ctx) {
+    // A stone forge with its fire, an anvil, and a hammer.
+    stoneWall(ctx, -0.5, -0.3, 0.42, 0.74);
+    ctx.beginPath();
+    ctx.rect(-0.42, 0.04, 0.26, 0.2);
+    fillStroke(ctx, INK);
+    smallFlame(ctx, -0.29, 0.1, 0.22);
+    ctx.beginPath();
+    ctx.rect(-0.42, -0.5, 0.12, 0.22);
+    fillStroke(ctx, STONE);
+    smoke(ctx, -0.36, -0.52);
+    ctx.beginPath();
+    ctx.moveTo(0.02, 0.06);
+    ctx.lineTo(0.5, 0.06);
+    ctx.lineTo(0.42, 0.16);
+    ctx.lineTo(0.34, 0.16);
+    ctx.lineTo(0.34, 0.3);
+    ctx.lineTo(0.44, 0.42);
+    ctx.lineTo(0.1, 0.42);
+    ctx.lineTo(0.2, 0.3);
+    ctx.lineTo(0.2, 0.16);
+    ctx.lineTo(0.1, 0.16);
+    ctx.closePath();
+    fillStroke(ctx, RESOURCE_WASH.iron);
+    ctx.lineWidth = 0.07;
+    ctx.beginPath();
+    ctx.moveTo(0.12, -0.38);
+    ctx.lineTo(0.38, -0.06);
+    ctx.stroke();
+    ctx.lineWidth = 0.08;
+    ctx.beginPath();
+    ctx.rect(0.04, -0.48, 0.2, 0.12);
+    fillStroke(ctx, RESOURCE_WASH.tool);
+  },
   chapel(ctx) {
     // A small timber church: steep roof, bell turret and a cross.
     ctx.beginPath();

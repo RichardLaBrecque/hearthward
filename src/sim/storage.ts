@@ -9,7 +9,7 @@ import type { Building, World } from './types';
 import { hearth, tierOf } from './world';
 
 export type Stored = Exclude<Resource, 'coin'>;
-export const STORED: readonly Stored[] = ['food', 'wood', 'stone', 'iron'];
+export const STORED: readonly Stored[] = ['food', 'wood', 'stone', 'iron', 'plank', 'tool'];
 
 export const isStored = (r: Resource): r is Stored => r !== 'coin';
 
@@ -20,8 +20,17 @@ export const isGeneralStore = (b: Building): boolean => isStore(b) && !DEFS[b.ty
 export const accepts = (b: Building, r: Resource): boolean =>
   isStore(b) && (tierOf(b).stores?.[r] ?? 0) > 0 && (!DEFS[b.type].accepts || DEFS[b.type].accepts!.includes(r));
 
-// How much of `r` a building can hold: a store's room or a home's pantry.
-export const holdsAt = (b: Building, r: Resource): number => (isStore(b) ? tierOf(b).stores?.[r] : tierOf(b).pantry?.[r]) ?? 0;
+// Producing buildings keep a couple of tools on hand; workers wear them out.
+export const TOOL_SLOTS = 2;
+
+// How much of `r` a building can hold: a store's room, a home's pantry, a
+// workshop's inputs, or a workplace's tools.
+export function holdsAt(b: Building, r: Resource): number {
+  const tier = tierOf(b);
+  if (isStore(b)) return tier.stores?.[r] ?? 0;
+  if (r === 'tool' && DEFS[b.type].produces && DEFS[b.type].produces !== 'tool') return TOOL_SLOTS;
+  return tier.pantry?.[r] ?? tier.inputs?.[r] ?? 0;
+}
 export const roomAt = (b: Building, r: Resource): number => Math.max(0, holdsAt(b, r) - stockAt(b, r));
 
 export const connectedStores = (w: World): Building[] =>

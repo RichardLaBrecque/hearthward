@@ -11,6 +11,20 @@ import { checkCharter } from './progression';
 import { feedWarriors, updateMilitary } from './military';
 import { spawnRaid, spawnWolves, updateMonsters } from './monsters';
 import { stockAt, syncTotals, takeFrom } from './storage';
+
+export const TOOL_DAYS = 3; // each worker wears out a tool this often
+
+// Workers wear down the tools at their workplace: one per worker every few days.
+function wearTools(w: World): void {
+  for (const b of w.buildings.values()) {
+    if (stockAt(b, 'tool') < 1 || !b.workers.length) continue;
+    b.wear = (b.wear ?? 0) + b.workers.length / TOOL_DAYS;
+    while (b.wear >= 1 && stockAt(b, 'tool') >= 1) {
+      takeFrom(w, b, 'tool', 1);
+      b.wear -= 1;
+    }
+  }
+}
 import { updateTrade } from './trade';
 import { updateVillager } from './villagers';
 import { hearth, log, removeVillager, spawnVillager } from './world';
@@ -119,6 +133,7 @@ function newDay(w: World): void {
   }
 
   fadeTraffic(w);
+  wearTools(w);
   regrowFish(w);
   igniteFires(w);
   strikeBlight(w);

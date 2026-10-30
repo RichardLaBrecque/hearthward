@@ -22,7 +22,7 @@ export function createWorld(seed: number, custom?: Map<string, Terrain>): World 
     buildings: new Map(),
     byHex: new Map(),
     villagers: new Map(),
-    res: { food: 30, wood: 40, stone: 10, coin: 10, iron: 0 },
+    res: { food: 30, wood: 40, stone: 10, coin: 10, iron: 0, plank: 0, tool: 0 },
     time: 0,
     day: 0,
     nextId: 1,

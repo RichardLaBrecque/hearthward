@@ -14,6 +14,7 @@ export interface Building {
   stock?: Partial<Record<Resource, number>>; // goods held here: a store's stock or a home's pantry
   order?: UpgradeOrder; // an upgrade waiting on its supplies
   lapsed?: number; // homes: days in a row the current tier's needs went unmet
+  wear?: number; // workplaces: tool wear building toward the next tool used up
 }
 
 // An upgrade under way: porters deliver its supplies a load at a time, and the
@@ -54,7 +55,7 @@ export interface Warrior extends Mover {
   target: number | null; // monster id
 }
 
-export type TradeGood = 'food' | 'wood' | 'stone' | 'iron';
+export type TradeGood = 'food' | 'wood' | 'stone' | 'iron' | 'plank';
 
 export interface Caravan {
   leaves: number; // sim time

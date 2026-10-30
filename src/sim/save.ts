@@ -66,6 +66,7 @@ interface SaveData {
     links?: string[];
     order?: UpgradeOrder;
     lapsed?: number;
+    wear?: number;
   }[];
   villagers: Pick<Villager, 'id' | 'at' | 'home' | 'job' | 'carry' | 'hunger' | 'cold'>[];
   log: LogEntry[];
@@ -164,6 +165,12 @@ export function deserialize(json: string): World | null {
   // Terrain comes back from the seed, so re-clear forest and hills that were worked out.
   for (const [k, left] of w.deposits) {
     if (left <= 0 && !k.startsWith('iron@') && w.terrain.get(k) !== 'water') w.terrain.set(k, clearedTerrain(w.terrain.get(k)));
+  }
+  // Caravans saved before planks were traded.
+  if (w.caravan && w.caravan.buy.plank === undefined) {
+    Object.assign(w.caravan.buy, { plank: 25 });
+    Object.assign(w.caravan.sell, { plank: 15 });
+    Object.assign(w.caravan.stock, { plank: 20 });
   }
   // Caravans saved before iron was traded.
   if (w.caravan && w.caravan.buy.iron === undefined) {

@@ -13,7 +13,7 @@ afterEach(() => {
 function hamlet() {
   vi.spyOn(Math, 'random').mockReturnValue(0.99); // no fires
   const w = flatWorld();
-  setGoods(w, { food: 100, wood: 180, stone: 140, iron: 40 }); // within the Moot Hall's room
+  setGoods(w, { food: 100, wood: 180, stone: 140, iron: 40, plank: 40 }); // within the Moot Hall's room
   for (const k of ['1,0', '2,0', '3,0', '4,0']) place(w, 'road', k);
   const hut = place(w, 'house', '2,1')!;
   for (const v of [...w.villagers.values()].slice(0, 2)) v.home = hut.id;

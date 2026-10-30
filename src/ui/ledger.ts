@@ -1,11 +1,11 @@
 // The top bar's numbers and their hover cards: what you have, where it's going,
 // and how much of it you can keep.
 import { DEFS, type Resource } from '../sim/buildings';
-import { capacity, storageSources, type Stored } from '../sim/storage';
+import { capacity, storageSources, TOOL_SLOTS, type Stored } from '../sim/storage';
 import { housingCapacity, jobTotals } from '../sim/jobs';
 import { RECRUIT_FOOD } from '../sim/military';
 import { calendar, DAY_LENGTH, DAYS_PER_SEASON, WINTER } from '../sim/seasons';
-import { GROWTH_FOOD_BASE, GROWTH_FOOD_PER_HEAD, HEAT_PER_HOME } from '../sim/tick';
+import { GROWTH_FOOD_BASE, GROWTH_FOOD_PER_HEAD, HEAT_PER_HOME, TOOL_DAYS } from '../sim/tick';
 import { idleSummary } from '../sim/idle';
 import { ironLeft } from '../sim/land';
 import { charterTerms } from '../sim/progression';
@@ -104,6 +104,8 @@ const STORE_HINT: Record<Stored, string> = {
   wood: 'Build a woodshed or storehouse (Village) for more room.',
   stone: 'Build a stone yard or storehouse (Village) for more room.',
   iron: 'Build an ore shed or storehouse (Village) for more room.',
+  plank: 'Build a storehouse (Village), or raise the hearth, for more room.',
+  tool: 'Build a storehouse (Village), or raise the hearth, for more room.',
 };
 
 // How much of a good you hold, how much you can, and where the room comes from.
@@ -133,6 +135,8 @@ export function ledgerCells(w: World, trend: Trend): string {
     storedCell(w, trend, 'wood', 'Wood', woodSub, woodLow),
     storedCell(w, trend, 'stone', 'Stone'),
     ...(ironKnown(w) ? [storedCell(w, trend, 'iron', 'Iron')] : []),
+    ...(crafted(w, 'plank') ? [storedCell(w, trend, 'plank', 'Planks')] : []),
+    ...(crafted(w, 'tool') ? [storedCell(w, trend, 'tool', 'Tools')] : []),
     cell('coin', 'Coin', fmt(w.res.coin), trendSpan(trend, 'coin')),
   ];
 
@@ -225,6 +229,20 @@ export function ledgerTip(w: World, key: LedgerKey, trend: Trend): string {
         checks
       );
     }
+    case 'plank':
+      return (
+        `<h4>Planks</h4>` +
+        storageRows(w, 'plank') +
+        trendRow('plank') +
+        note('Sawn from wood at a sawmill (2 wood each). Townhouses, the Garrison, the Lumber yard and the Cathedral nave need them.')
+      );
+    case 'tool':
+      return (
+        `<h4>Tools</h4>` +
+        storageRows(w, 'tool') +
+        trendRow('tool') +
+        note(`Forged at a smithy from iron and wood. Porters keep ${TOOL_SLOTS} at each workplace; with tools on hand it works 25% faster. Each worker wears one out every ${TOOL_DAYS} days.`)
+      );
     case 'stone':
       return `<h4>Stone</h4>` + storageRows(w, 'stone') + trendRow('stone') + note('Used for upgrades, wells, dikes and barracks.');
     case 'coin': {
@@ -281,6 +299,10 @@ export function ledgerTip(w: World, key: LedgerKey, trend: Trend): string {
   }
 }
 
+
+// Planks and tools join the bar once there's a workshop making them, or some in store.
+const crafted = (w: World, r: 'plank' | 'tool'): boolean =>
+  w.res[r] > 0 || [...w.buildings.values()].some((b) => DEFS[b.type].produces === r);
 
 // Iron joins the bar once it matters: some in store, a vein found, or a mine built.
 const ironKnown = (w: World): boolean =>

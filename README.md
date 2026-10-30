@@ -74,7 +74,8 @@ Drag with the Road or Upgrade tool to paint along a path. Roads only join where 
 
 - **Storage.** Every good except coin has a storage limit. The hearth holds a base amount (Hearth: 100 food, 100 wood, 60 stone, 40 iron; more at the Longhouse and the Moot Hall). Connected stores add room: a Storehouse adds a little of each, while a Granary (food), Woodshed (wood), Stone Yard (stone) and Ore Shed (iron) add a lot of one good. When a store is full, workers producing that good stand idle, and trade or loot that does not fit is turned away. Coin has no limit.
 - **Trading Post and coin.** Every 4–7 days a caravan stops at a connected trading post and stays for 2 days. You buy and sell goods in lots of 10 for coin. Prices change from caravan to caravan, and every lot you buy or sell moves the price against you. Coin pays for the barracks upgrade.
-- **Barracks.** Each barracks invites warriors to the hearth, one every 15s, each costing 10 food to equip, until it has its full number. Warriors walk by road to their post and fight any monster inside the patrol radius. They can die, and the barracks replaces them. Every warrior eats 1 food a day. Upgrading to a Garrison (which costs coin) raises the number of warriors from 2 to 3, turns Militia into Men-at-arms (health 14→24, damage 3→5 per second), and widens the patrol radius from 4 to 5. More barracks means more warriors.
+- **Workshops: planks and tools.** Two crafted goods, each one step from a raw one. A **Sawmill** (Village level, 2 workers) saws 2 wood into a plank every 10s. A **Smithy** (Town level, 1 worker) forges a tool from 1 iron and 1 wood every 20s. Porters keep each workshop stocked with its materials, right after pantries, and a workshop with nothing to work stands idle "waiting for wood". Planks go into the finer upgrades: the Townhouse, the Garrison, the Lumber yard and the Cathedral nave. Tools go to workplaces: porters keep 2 at every producing building, it works 25% faster while it has any, and each worker wears one out every 3 days. The hearth and storehouses hold some of each, and caravans trade planks (not tools).
+- **Barracks.** Each barracks invites warriors to the hearth, one every 15s, each costing 10 food to equip, until it has its full number. Warriors walk by road to their post and fight any monster inside the patrol radius. They can die, and the barracks replaces them. Every warrior eats 1 food a day. Upgrading to a Garrison (which costs coin and planks) raises the number of warriors from 2 to 3, turns Militia into Men-at-arms (health 14→24, damage 3→5 per second), and widens the patrol radius from 4 to 5. More barracks means more warriors.
 
 ## Upgrades are supplied
 
@@ -103,7 +104,7 @@ Houses aren't upgraded by hand. Each day a house checks its surroundings. When i
 | --- | --- | --- | --- |
 | Hut | 3 | A road to the hearth | (built: 10 wood) |
 | Cottage | 5 | Village level; a connected well within 2 hexes; every resident fed from the pantry today | 15 wood, 10 stone |
-| Townhouse | 7 | Town level; the Cottage's needs; a staffed **Chapel** within 3 hexes; a storehouse or Trading Post within 4 | 20 wood, 20 stone, 5 iron |
+| Townhouse | 7 | Town level; the Cottage's needs; a staffed **Chapel** within 3 hexes; a storehouse or Trading Post within 4 | 10 wood, 8 planks, 20 stone, 5 iron |
 
 The **Chapel** (Village level, key H, 30 wood and 20 stone) takes one priest.
 
@@ -114,8 +115,8 @@ The hearth is the settlement's progression track. Use the Upgrade tool on it onc
 | Level | Hearth becomes | Needs | Unlocks |
 | --- | --- | --- | --- |
 | Hamlet | Hearth | (start) | Road, house, farm, woodcutter, quarry, well, watchtower, dike, barracks |
-| Village | Longhouse | 8 villagers, 40 wood, 20 stone | Storehouse, Trading Post, Chapel, Irrigated field, Cottage, Cobble road, Lumber camp, Deep quarry |
-| Town | Moot Hall | 16 villagers, 60 wood, 50 stone, 30 coin | Granary, Stone granary, Garrison, Townhouse |
+| Village | Longhouse | 8 villagers, 40 wood, 20 stone | Storehouse, Trading Post, Chapel, Sawmill, Irrigated field, Cottage, Cobble road, Lumber camp, Deep quarry |
+| Town | Moot Hall | 16 villagers, 60 wood, 50 stone, 30 coin | Granary, Stone granary, Garrison, Townhouse, Smithy |
 
 Requirements are data: a building's `level`, and a tier's `level`, `pop` and `needs`, in `src/sim/buildings.ts`.
 
@@ -147,7 +148,7 @@ Iron pays for the Garrison and the Cathedral. Caravans sometimes sell a little.
 
 1. Raise the hearth to the Moot Hall (Town).
 2. Grow to 30 folk.
-3. Complete the **Cathedral** (Town level): Foundations (40 wood, 60 stone), then the Nave (60 wood, 80 stone, 20 iron, 50 coin), then the Spire (100 stone, 40 iron, 100 coin), each stage ordered with the Upgrade tool and supplied by porters.
+3. Complete the **Cathedral** (Town level): Foundations (40 wood, 60 stone), then the Nave (30 wood, 20 planks, 80 stone, 20 iron, 50 coin), then the Spire (100 stone, 40 iron, 100 coin), each stage ordered with the Upgrade tool and supplied by porters.
 
 The top bar's **Charter** stat shows your progress. Hover it for the checklist.
 
