@@ -38,7 +38,7 @@ A new hamlet opens with a short guided tutorial in the top-left panel: lay a roa
 | 1–9, 0 | Road, House, Farm, Woodcutter, Quarry, Storehouse, Well, Watchtower, Dike, Fishery |
 | G / T / B / H | Granary, Trading Post, Barracks, Chapel |
 
-The toolbar groups build tools into tabs (Settle, Gather, Store & Trade, Defend, Great Works). Hotkeys work from any tab and jump to the tool's tab. A dot marks the tab holding the active tool, and a tab is dimmed while everything in it is locked.
+The toolbar groups build tools into tabs (Settle, Gather, Produce, Store & Trade, Defend, Great Works). Hotkeys work from any tab and jump to the tool's tab. A dot marks the tab holding the active tool, and a tab is dimmed while everything in it is locked.
 | U / X | Upgrade / Demolish tool |
 | C | Cycle map overlays: Roads, Coverage, Traffic, off |
 | Esc / right-click | Clear tool |

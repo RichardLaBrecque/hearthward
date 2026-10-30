@@ -9,7 +9,8 @@ export interface ToolGroup {
 
 export const TOOL_GROUPS: readonly ToolGroup[] = [
   { id: 'settle', label: 'Settle', types: ['road', 'house', 'farm', 'chapel'] },
-  { id: 'gather', label: 'Gather', types: ['woodcutter', 'quarry', 'fishery', 'mine', 'sawmill', 'smithy'] },
+  { id: 'gather', label: 'Gather', types: ['woodcutter', 'quarry', 'fishery', 'mine'] },
+  { id: 'produce', label: 'Produce', types: ['sawmill', 'smithy'] },
   { id: 'trade', label: 'Store & Trade', types: ['storehouse', 'granary', 'woodshed', 'stoneyard', 'oreshed', 'market'] },
   { id: 'defend', label: 'Defend', types: ['well', 'tower', 'dike', 'barracks'] },
   { id: 'works', label: 'Great Works', types: ['cathedral'] },
