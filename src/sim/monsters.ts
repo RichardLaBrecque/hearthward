@@ -8,7 +8,7 @@ import { isConnected } from './network';
 import { findPath } from './path';
 import { calendar, DAYS_PER_SEASON, WINTER } from './seasons';
 import type { Building, Monster, MonsterKind, Villager, World } from './types';
-import { hearth, log, removeVillager } from './world';
+import { hearth, isOn, log, removeVillager } from './world';
 
 // Wolves: winter packs from forest dens that hunt villagers on the roads.
 const PACK_CHANCE = 0.35; // per winter day
@@ -123,7 +123,7 @@ export const mannedTowers = (w: World): Building[] =>
       isConnected(w, b.id) &&
       b.workers.some((id) => {
         const v = w.villagers.get(id);
-        return v !== undefined && v.state === 'working' && v.at === b.at;
+        return v !== undefined && v.state === 'working' && isOn(w, b, v.at);
       }),
   );
 
@@ -205,7 +205,7 @@ function updateRaider(w: World, m: Monster, dt: number): Outcome {
     setRoute(m, findPath(w, m.at, target.at, true)?.path ?? null);
   }
 
-  if (m.at === target.at) {
+  if (isOn(w, target, m.at)) {
     m.timer -= dt;
     if (m.timer > 0) return 'stay';
     pillage(w, target);
@@ -214,7 +214,7 @@ function updateRaider(w: World, m: Monster, dt: number): Outcome {
 
   followRoute(m);
   // Something was built in the way: re-plan.
-  if (m.next && m.next !== target.at && w.byHex.has(m.next) && w.buildings.get(w.byHex.get(m.next)!)!.type !== 'road') {
+  if (m.next && !isOn(w, target, m.next) && w.byHex.has(m.next) && w.buildings.get(w.byHex.get(m.next)!)!.type !== 'road') {
     setRoute(m, findPath(w, m.at, target.at, true)?.path ?? null);
     followRoute(m);
   }
@@ -223,7 +223,7 @@ function updateRaider(w: World, m: Monster, dt: number): Outcome {
     followRoute(m);
     if (!m.next) return flee(w, m);
   }
-  if (advance(m, dt, MONSTER_STATS.raider.speed) && m.at === target.at) m.timer = PILLAGE_TIME;
+  if (advance(m, dt, MONSTER_STATS.raider.speed) && isOn(w, target, m.at)) m.timer = PILLAGE_TIME;
   return 'stay';
 }
 

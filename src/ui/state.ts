@@ -16,8 +16,9 @@ export interface UiState {
   overlay: Overlay; // map mode laid over the board
   paused: boolean;
   speedIndex: number;
+  flip: boolean; // three-hex buildings point the other way
 }
 
-export const createUiState = (): UiState => ({ tool: null, hover: null, overlay: 'none', paused: false, speedIndex: 0 });
+export const createUiState = (): UiState => ({ tool: null, hover: null, overlay: 'none', paused: false, speedIndex: 0, flip: false });
 
 export const toolKey = (t: Tool): string => (t ? (t.kind === 'build' ? t.type : t.kind) : 'none');

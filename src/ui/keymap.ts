@@ -6,6 +6,7 @@ export type Command =
   | { type: 'tool'; tool: Tool }
   | { type: 'cancel' }
   | { type: 'overlay' }
+  | { type: 'flip' }
   | { type: 'pause' }
   | { type: 'speed'; delta: number }
   | { type: 'fullscreen' };
@@ -31,6 +32,7 @@ export const KEYMAP: Record<string, Command> = {
   x: { type: 'tool', tool: { kind: 'demolish' } },
   escape: { type: 'cancel' },
   c: { type: 'overlay' },
+  r: { type: 'flip' },
   ' ': { type: 'pause' },
   '=': { type: 'speed', delta: 1 },
   '+': { type: 'speed', delta: 1 },

@@ -64,6 +64,7 @@ interface SaveData {
     fire: number;
     blight?: number;
     links?: string[];
+    cells?: string[];
     order?: UpgradeOrder;
     lapsed?: number;
     wear?: number;
@@ -135,7 +136,7 @@ export function deserialize(json: string): World | null {
   for (const b of data.buildings) {
     const building: Building = { ...b, workers: [...b.workers], blight: b.blight ?? 0 };
     w.buildings.set(b.id, building);
-    w.byHex.set(b.at, b.id);
+    for (const k of b.cells ?? [b.at]) w.byHex.set(k, b.id); // saves from before footprints: one hex each
   }
   for (const v of data.villagers) {
     w.villagers.set(v.id, { ...v, state: 'idle', path: null, idx: 0, t: 0, dest: null, timer: 0, haul: null, rest: 0 });

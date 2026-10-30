@@ -89,6 +89,9 @@ async function main(): Promise<void> {
       case 'cancel':
         ui.tool = null;
         return;
+      case 'flip':
+        ui.flip = !ui.flip;
+        return;
       case 'overlay':
         ui.overlay = nextOverlay(ui.overlay);
         return;
@@ -119,7 +122,7 @@ async function main(): Promise<void> {
             place(world, 'road', k, from ?? undefined);
           }
         } else if (!from) {
-          place(world, tool.type, k);
+          place(world, tool.type, k, undefined, ui.flip);
         }
       } else if (tool.kind === 'upgrade') {
         // A click on a building with an order cancels it; a drag only places orders.

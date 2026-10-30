@@ -366,9 +366,10 @@ export class Hud {
 
     if (tool?.kind === 'build') {
       const def = DEFS[tool.type];
-      const err = placeError(w, tool.type, k);
+      const err = placeError(w, tool.type, k, ui.flip);
       lines.push(`<h3>${def.name}</h3><div class="dim">${costText(costAt(w, tool.type, k))}</div>`);
       if (MATERIAL[tool.type] && !b) lines.push(gatherLine(w, tool.type, k, 'Would work'));
+      if (def.footprint && def.footprint > 1) lines.push(`<div class="dim">Covers ${def.footprint} hexes${def.footprint === 3 ? ' · R to turn it' : ''}</div>`);
       lines.push(err ? `<div class="bad">${err}</div>` : '<div class="good">Click to build</div>');
     } else if (tool?.kind === 'upgrade' && b?.order) {
       lines.push(`<h3>→ ${DEFS[b.type].tiers[b.tier + 1].label}</h3><div class="warn">Click to cancel the upgrade (supplies go back to the stores)</div>`);

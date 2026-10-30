@@ -60,8 +60,8 @@ describe('homes improve themselves', () => {
     days(4, () => hut.tier === 1);
     days(2);
     expect(hut.tier).toBe(1); // no chapel or store yet
-    place(w, 'chapel', '1,-1');
-    place(w, 'storehouse', '3,-1');
+    place(w, 'chapel', '1,-1', undefined, true); // pointing away from the road
+    place(w, 'storehouse', '3,-1', undefined, true);
     days(5, () => hut.tier === 2);
     expect(hut.tier).toBe(2);
   });

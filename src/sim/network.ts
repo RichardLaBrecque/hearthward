@@ -1,5 +1,6 @@
 import { neighborKeys } from '../hex';
 import type { Building, World } from './types';
+import { borderOf } from './world';
 
 const roadAt = (w: World, k: string): Building | undefined => {
   const id = w.byHex.get(k);
@@ -41,7 +42,7 @@ const passableRoad = (w: World, k: string): boolean => isRoad(w, k) && !w.floods
 export function rebuildNetwork(w: World): void {
   const hearth = w.buildings.get(w.hearthId)!;
   const roads = new Set<string>();
-  const stack = neighborKeys(hearth.at).filter((k) => passableRoad(w, k));
+  const stack = borderOf(hearth).filter((k) => passableRoad(w, k));
   for (const k of stack) roads.add(k);
   while (stack.length) {
     for (const n of linksOf(w, stack.pop()!)) {
@@ -54,7 +55,7 @@ export function rebuildNetwork(w: World): void {
 
   const buildings = new Set<number>([hearth.id]);
   for (const b of w.buildings.values()) {
-    if (b.type !== 'road' && neighborKeys(b.at).some((n) => roads.has(n))) buildings.add(b.id);
+    if (b.type !== 'road' && borderOf(b).some((n) => roads.has(n))) buildings.add(b.id);
   }
 
   w.net = { version: w.net.version + 1, roads, buildings };

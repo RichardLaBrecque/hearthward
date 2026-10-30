@@ -24,7 +24,7 @@ import {
   takeFrom,
 } from './storage';
 import type { Building, Haul, Villager, World } from './types';
-import { stop, tierOf } from './world';
+import { isOn, stop, tierOf } from './world';
 
 export const PORTER_CARRY = 10;
 export const PANTRY_DAYS = 3; // days of food porters keep in each home
@@ -228,7 +228,7 @@ function dropOff(w: World, v: Villager): void {
   const to = w.buildings.get(h.to);
   if (v.carry) {
     const handOver = h.supply ? supply : put;
-    const left = v.carry.amount - (to && to.at === v.at ? handOver(w, to, v.carry.res, v.carry.amount) : 0);
+    const left = v.carry.amount - (to && isOn(w, to, v.at) ? handOver(w, to, v.carry.res, v.carry.amount) : 0);
     if (left > 0) store(w, v.carry.res, left, v.at);
   }
   v.carry = null;

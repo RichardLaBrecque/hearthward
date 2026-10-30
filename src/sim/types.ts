@@ -5,7 +5,8 @@ import type { PathResult } from './path';
 export interface Building {
   id: number;
   type: BuildingType;
-  at: string; // hex key
+  at: string; // hex key of its anchor (the center, for a seven-hex building)
+  cells?: string[]; // every hex it covers, when more than its anchor
   tier: number;
   workers: number[]; // villager ids
   fire: number; // 0 = not burning, 1 = destroyed

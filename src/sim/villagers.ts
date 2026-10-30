@@ -8,7 +8,7 @@ import { deplete, depletes, FERTILE_BONUS, gatherBonus, SOIL, sourcesOf } from '
 import { findPath, moveCost } from './path';
 import { calendar, FARM_SEASON_MULT, WINTER } from './seasons';
 import type { Building, Villager, VillagerState, World } from './types';
-import { buildingAt, hearth, stop, tierOf } from './world';
+import { buildingAt, cellsOf, hearth, isOn, stop, tierOf } from './world';
 
 export const WALK_SPEED = 1.4; // hexes per second on a dirt road
 const FARM_NEIGHBOR_BONUS = 0.15;
@@ -23,7 +23,7 @@ export function updateVillager(w: World, v: Villager, dt: number): void {
 // Why a workplace is idle right now, or null if work can proceed.
 export function blockedReason(w: World, b: Building): string | null {
   if (b.fire > 0) return 'on fire';
-  if (w.floods.has(b.at)) return 'flooded';
+  if (cellsOf(b).some((k) => w.floods.has(k))) return 'flooded';
   if (b.blight > 0) return 'blighted, workers are tending it';
   if (b.type === 'farm' && calendar(w.time).season === WINTER) return 'fallow for winter';
   if (depletes(b) && !sourcesOf(w, b).length) return EXHAUSTED[b.type] ?? 'nothing left to work';
@@ -59,7 +59,7 @@ function decide(w: World, v: Villager): void {
   }
   if (v.job !== null) {
     const b = w.buildings.get(v.job)!;
-    if (v.at === b.at) return startWork(v, b);
+    if (isOn(w, b, v.at)) return startWork(v, b);
     if (travel(w, v, b.at, 'toWork')) return;
     releaseJob(w, v);
   }
@@ -77,7 +77,7 @@ function startWork(v: Villager, b: Building): void {
 
 function work(w: World, v: Villager, dt: number): void {
   const b = v.job === null ? undefined : w.buildings.get(v.job);
-  if (!b || v.at !== b.at) return stop(v);
+  if (!b || !isOn(w, b, v.at)) return stop(v);
   if (DEFS[b.type].porters) {
     startHaul(w, v); // porters wait at their post for errands
     return;
@@ -138,7 +138,7 @@ function arrive(w: World, v: Villager): void {
   stop(v);
   if (state === 'toWork') {
     const b = v.job === null ? undefined : w.buildings.get(v.job);
-    if (b && b.at === v.at) startWork(v, b);
+    if (b && isOn(w, b, v.at)) startWork(v, b);
   } else if (state === 'toStore') {
     const b = buildingAt(w, v.at);
     if (b && v.carry) {
@@ -150,7 +150,7 @@ function arrive(w: World, v: Villager): void {
 }
 
 function nearNetwork(w: World, k: string): boolean {
-  if (k === hearth(w).at || w.net.roads.has(k)) return true;
+  if (isOn(w, hearth(w), k) || w.net.roads.has(k)) return true;
   return neighborKeys(k).some((n) => w.net.roads.has(n));
 }
 

@@ -45,7 +45,7 @@ describe('workshops', () => {
 
   it('a smithy forges tools from iron and wood', () => {
     const { w } = mill();
-    place(w, 'smithy', '2,1');
+    place(w, 'smithy', '1,1'); // clear of the sawmill's three hexes
     run(w, 90, () => w.res.tool >= 1);
     expect(w.res.tool).toBeGreaterThanOrEqual(1);
   });

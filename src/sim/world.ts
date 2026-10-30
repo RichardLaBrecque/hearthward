@@ -1,6 +1,6 @@
-import { hexesInRange, key, parseKey } from '../hex';
+import { hexesInRange, key, keyDistance, neighborKeys, parseKey } from '../hex';
 import { generateFeatures, generateMap, type Terrain } from '../map';
-import { DEFS, type BuildingType } from './buildings';
+import { DEFS, footprintCells, type BuildingType } from './buildings';
 import { rebuildNetwork, unlinkAll } from './network';
 import { findPath } from './path';
 import { SEASON_LENGTH } from './seasons';
@@ -8,7 +8,7 @@ import { syncTotals } from './storage';
 import type { Building, LogEntry, Villager, World } from './types';
 
 export const START_POP = 4;
-export const START_REVEAL = 4;
+export const START_REVEAL = 5; // from the hearth's middle: four hexes past its edge
 const FIRST_CARAVAN = SEASON_LENGTH; // early summer of the first year
 const LOG_LIMIT = 40;
 
@@ -44,7 +44,7 @@ export function createWorld(seed: number, custom?: Map<string, Terrain>): World 
     traffic: new Map(),
     pathCache: new Map(),
   };
-  const hearth = addBuilding(w, 'hearth', '0,0');
+  const hearth = addBuilding(w, 'hearth', '0,0', 0, footprintCells('hearth', '0,0'));
   w.hearthId = hearth.id;
   reveal(w, hearth.at, START_REVEAL);
   rebuildNetwork(w);
@@ -55,20 +55,38 @@ export function createWorld(seed: number, custom?: Map<string, Terrain>): World 
   return w;
 }
 
-export function addBuilding(w: World, type: BuildingType, at: string, tier = 0): Building {
+export function addBuilding(w: World, type: BuildingType, at: string, tier = 0, cells: string[] = [at]): Building {
   const b: Building = { id: w.nextId++, type, at, tier, workers: [], fire: 0, blight: 0 };
+  if (cells.length > 1) b.cells = cells;
   if (type === 'road') b.links = [];
   w.buildings.set(b.id, b);
-  w.byHex.set(at, b.id);
+  for (const k of cells) w.byHex.set(k, b.id);
   return b;
 }
+
+// Every hex a building covers.
+export const cellsOf = (b: Building): string[] => b.cells ?? [b.at];
+
+// Hexes from `k` to the nearest hex of `b` (0 when on it).
+export const distanceTo = (b: Building, k: string): number => Math.min(...cellsOf(b).map((c) => keyDistance(c, k)));
+
+// Hexes between the nearest edges of two buildings.
+export const between = (a: Building, b: Building): number => Math.min(...cellsOf(a).map((c) => distanceTo(b, c)));
+
+// The hexes touching a building from outside.
+export function borderOf(b: Building): string[] {
+  const own = new Set(cellsOf(b));
+  return [...new Set(cellsOf(b).flatMap(neighborKeys))].filter((k) => !own.has(k));
+}
+
+export const isOn = (w: World, b: Building, k: string): boolean => w.byHex.get(k) === b.id;
 
 export function removeBuilding(w: World, id: number): void {
   const b = w.buildings.get(id);
   if (!b) return;
   if (b.type === 'road') unlinkAll(w, b);
   w.buildings.delete(id);
-  w.byHex.delete(b.at);
+  for (const k of cellsOf(b)) w.byHex.delete(k);
   for (const v of w.villagers.values()) {
     if (v.home === id) v.home = null;
     if (v.job === id) {

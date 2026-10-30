@@ -2,20 +2,28 @@ import { hex, hexesInRange, key } from '../src/hex';
 import type { Terrain } from '../src/map';
 import { orderUpgrade, supply, supplyNeeded } from '../src/sim/actions';
 import { DEFS, type Resource } from '../src/sim/buildings';
+import { rebuildNetwork } from '../src/sim/network';
 import { connectedStores, STORED, syncTotals, take } from '../src/sim/storage';
 import type { Building, World } from '../src/sim/types';
 import { createWorld, hearth } from '../src/sim/world';
 
 // A world on an all-grass map so tests don't depend on generated terrain. The
 // hearth starts fully raised so every building and tier is unlocked, and holds
-// plenty of everything.
-export function flatWorld(radius = 8, overrides: Record<string, Terrain> = {}) {
+// plenty of everything. Most tests lay roads right beside 0,0, so the hearth
+// covers just that hex unless `wideHearth` asks for its real seven-hex footprint.
+export function flatWorld(radius = 8, overrides: Record<string, Terrain> = {}, { wideHearth = false } = {}) {
   const terrain = new Map<string, Terrain>();
   for (const h of hexesInRange(hex(0, 0), radius)) terrain.set(key(h), 'grass');
   for (const [k, t] of Object.entries(overrides)) terrain.set(k, t);
   const w = createWorld(1, terrain);
   for (const k of terrain.keys()) w.revealed.add(k);
   hearth(w).tier = DEFS.hearth.tiers.length - 1;
+  if (!wideHearth) {
+    const h = hearth(w);
+    for (const k of h.cells ?? []) if (k !== h.at) w.byHex.delete(k);
+    delete h.cells;
+    rebuildNetwork(w);
+  }
   setGoods(w, { food: 1000, wood: 1000, stone: 1000, iron: 1000, plank: 1000, coin: 1000 });
   return w;
 }

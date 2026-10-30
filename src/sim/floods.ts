@@ -3,7 +3,7 @@ import type { Terrain } from '../map';
 import { DIKE_RADIUS } from './buildings';
 import { calendar, DAY_LENGTH, DAYS_PER_SEASON } from './seasons';
 import type { World } from './types';
-import { buildingAt, hearth, log, refreshNetwork, removeBuilding } from './world';
+import { buildingAt, hearth, isOn, log, refreshNetwork, removeBuilding } from './world';
 
 const FLOOD_CHANCE = 0.35; // per spring day
 const SOURCE_RANGE = 8; // floods start from water or marsh this close to the hearth
@@ -19,10 +19,10 @@ export const dikeProtects = (w: World, k: string): boolean =>
 
 // Hexes a flood from `source` would cover, after dikes.
 export function floodZone(w: World, source: string): string[] {
-  const home = hearth(w).at;
+  const home = hearth(w);
   return hexesInRange(parseKey(source), FLOOD_REACH)
     .map(key)
-    .filter((k) => k !== home && floodable(w, k) && !dikeProtects(w, k));
+    .filter((k) => !isOn(w, home, k) && floodable(w, k) && !dikeProtects(w, k));
 }
 
 export function startFlood(w: World, source?: string): void {

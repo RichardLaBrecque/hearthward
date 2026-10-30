@@ -1,9 +1,8 @@
-import { keyDistance, neighborKeys } from '../hex';
 import { DEFS, WELL_RADIUS } from './buildings';
 import { isConnected } from './network';
 import { calendar, DAYS_PER_SEASON } from './seasons';
 import type { Building, World } from './types';
-import { buildingAt, log, removeBuilding } from './world';
+import { between, borderOf, buildingAt, log, removeBuilding } from './world';
 
 const IGNITE_CHANCE = 0.01; // per flammable building per day
 const BURN_RATE = 0.04; // ~25s to burn down
@@ -31,7 +30,7 @@ export function igniteFires(w: World): void {
 
 export const wellCovers = (w: World, b: Building): boolean =>
   [...w.buildings.values()].some(
-    (x) => x.type === 'well' && isConnected(w, x.id) && keyDistance(x.at, b.at) <= WELL_RADIUS,
+    (x) => x.type === 'well' && isConnected(w, x.id) && between(x, b) <= WELL_RADIUS, // measured to the building's nearest hex
   );
 
 export function updateFires(w: World, dt: number): void {
@@ -48,7 +47,7 @@ export function updateFires(w: World, dt: number): void {
       log(w, `The ${DEFS[b.type].name.toLowerCase()} burned down.`, 'bad');
       removeBuilding(w, b.id);
     } else if (b.fire > SPREAD_THRESHOLD) {
-      for (const n of neighborKeys(b.at)) {
+      for (const n of borderOf(b)) {
         const nb = buildingAt(w, n);
         if (nb && DEFS[nb.type].flammable && nb.fire === 0 && Math.random() < SPREAD_RATE * tinder(w, nb) * dt) {
           nb.fire = 0.01;

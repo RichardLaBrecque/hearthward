@@ -1,14 +1,14 @@
 // Player actions: placing, upgrading and demolishing buildings.
-import { keyDistance, neighborKeys } from '../hex';
+import { neighborKeys } from '../hex';
 import { TERRAIN_NAMES } from '../map';
-import { DEFS, RESOURCES, type BuildingType, type Cost, type Prerequisite, type Resource, type Tier } from './buildings';
+import { DEFS, footprintCells, RESOURCES, type BuildingType, type Cost, type Prerequisite, type Resource, type Tier } from './buildings';
 import { warriorStats } from './combat';
 import { featureAt, FEATURE_NAMES, HEATH_DISCOUNT } from './land';
 import { isConnected, isRoad, link, linked, linksOf } from './network';
 import { isStored, store, STORED, take } from './storage';
 import { hearthLevel, levelLabel, lockedText, settlementName, unlocksAt } from './progression';
 import type { Building, World } from './types';
-import { addBuilding, buildingAt, log, refreshNetwork, removeBuilding, reveal } from './world';
+import { addBuilding, between, buildingAt, log, refreshNetwork, removeBuilding, reveal } from './world';
 
 const REVEAL_ROAD = 3;
 const REVEAL_BUILDING = 2;
@@ -22,18 +22,24 @@ function pay(w: World, cost: Cost, near: string): void {
 }
 
 // Null when placement is allowed, otherwise a short reason for the tooltip.
-export function placeError(w: World, type: BuildingType, at: string): string | null {
+// `flip` turns a three-hex building's triangle the other way.
+export function placeError(w: World, type: BuildingType, at: string, flip = false): string | null {
   const def = DEFS[type];
   if (def.level && hearthLevel(w) < def.level) return lockedText(def.level);
-  const terrain = w.terrain.get(at);
-  if (!terrain || !w.revealed.has(at)) return 'Unexplored';
-  if (buildingAt(w, at)) return 'Occupied';
-  if (!def.terrain.includes(terrain)) return `Can't build on ${TERRAIN_NAMES[terrain]}`;
+  const cells = footprintCells(type, at, flip);
+  for (const k of cells) {
+    const terrain = w.terrain.get(k);
+    if (!terrain || !w.revealed.has(k)) return 'Unexplored';
+    if (buildingAt(w, k)) return 'Occupied';
+    if (!def.terrain.includes(terrain)) return `Can't build on ${TERRAIN_NAMES[terrain]}`;
+  }
+  // "Near" rules count any hex the building covers or touches.
+  const reach = [...new Set([...cells, ...cells.flatMap(neighborKeys)])];
   const near = def.near;
-  if (near && !near.includes(terrain) && !neighborKeys(at).some((n) => near.includes(w.terrain.get(n)!))) {
+  if (near && !reach.some((n) => near.includes(w.terrain.get(n)!))) {
     return `Must border ${near.map((t) => TERRAIN_NAMES[t]).join(' or ')}`;
   }
-  if (def.nearFeature && ![at, ...neighborKeys(at)].some((n) => w.revealed.has(n) && featureAt(w, n) === def.nearFeature)) {
+  if (def.nearFeature && !reach.some((n) => w.revealed.has(n) && featureAt(w, n) === def.nearFeature)) {
     return `Must be on or beside ${FEATURE_NAMES[def.nearFeature]}`;
   }
   if (!canAfford(w, costAt(w, type, at))) return 'Not enough resources';
@@ -50,10 +56,10 @@ export function costAt(w: World, type: BuildingType, at: string): Cost {
 
 // `from` is the previous hex of a drag: a new road joins it. Without one
 // (a click, or the first hex of a drag) the road joins its neighbors on its own.
-export function place(w: World, type: BuildingType, at: string, from?: string): Building | null {
-  if (placeError(w, type, at)) return null;
+export function place(w: World, type: BuildingType, at: string, from?: string, flip = false): Building | null {
+  if (placeError(w, type, at, flip)) return null;
   pay(w, costAt(w, type, at), at);
-  const b = addBuilding(w, type, at);
+  const b = addBuilding(w, type, at, 0, footprintCells(type, at, flip));
   if (type === 'road') {
     if (from && isRoad(w, from) && neighborKeys(at).includes(from)) link(w, at, from);
     else autoLink(w, at);
@@ -113,7 +119,7 @@ export const prerequisiteMet = (w: World, b: Building, needs: Prerequisite): boo
     (o) =>
       typesOf(needs).includes(o.type) &&
       isConnected(w, o.id) &&
-      keyDistance(o.at, b.at) <= needs.within &&
+      between(o, b) <= needs.within &&
       (!needs.staffed || o.workers.length > 0),
   );
 

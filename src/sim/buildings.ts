@@ -1,3 +1,4 @@
+import { DIRECTIONS, hex, key, parseKey } from '../hex';
 import { GROUND, HIGHLAND, type FeatureKind, type Terrain } from '../map';
 
 export type Resource = 'food' | 'wood' | 'stone' | 'iron' | 'plank' | 'tool' | 'coin';
@@ -47,6 +48,21 @@ export interface Tier {
   pop?: number; // hearth tiers: villagers required
 }
 
+// Building sizes: a single hex, a triangle of three, or a flower of seven
+// (a hex and its ring). All compact, nothing long or lopsided.
+export type Footprint = 1 | 3 | 7;
+
+// The hexes a building of `type` anchored at `at` would cover. A triangle can
+// point two ways; `flip` picks the other one.
+export function footprintCells(type: BuildingType, at: string, flip = false): string[] {
+  const size = DEFS[type].footprint ?? 1;
+  const h = parseKey(at);
+  const step = (d: number) => key(hex(h.q + DIRECTIONS[d].q, h.r + DIRECTIONS[d].r));
+  if (size === 7) return [at, ...DIRECTIONS.map((_, d) => step(d))];
+  if (size === 3) return [at, step(0), step(flip ? 5 : 1)];
+  return [at];
+}
+
 // A connected building of `type` (or any of several types) within `within` hexes,
 // optionally one with a worker on duty.
 export interface Prerequisite {
@@ -63,6 +79,7 @@ export interface BuildingDef {
   produces?: Resource;
   consumes?: Cost; // workshops: used up each work cycle
   workTime?: number; // seconds per work cycle
+  footprint?: Footprint; // hexes it covers (1 when unset); fixed for every tier
   storage?: boolean; // villagers deposit carried goods here
   accepts?: readonly Resource[]; // storage that only takes some goods
   porters?: boolean; // its job slots are porters, who haul goods between buildings
@@ -87,6 +104,7 @@ const LAND: readonly Terrain[] = [...GROUND, 'forest', ...HIGHLAND, 'marsh', 'we
 export const DEFS: Record<BuildingType, BuildingDef> = {
   hearth: {
     name: 'Hearth',
+    footprint: 7,
     porters: true,
     terrain: GROUND,
     storage: true,
@@ -208,6 +226,7 @@ export const DEFS: Record<BuildingType, BuildingDef> = {
   },
   storehouse: {
     name: 'Storehouse',
+    footprint: 3,
     porters: true,
     level: 2,
     terrain: GROUND,
@@ -219,6 +238,7 @@ export const DEFS: Record<BuildingType, BuildingDef> = {
   },
   sawmill: {
     name: 'Sawmill',
+    footprint: 3,
     level: 2,
     terrain: GROUND,
     produces: 'plank',
@@ -231,6 +251,7 @@ export const DEFS: Record<BuildingType, BuildingDef> = {
   },
   smithy: {
     name: 'Smithy',
+    footprint: 3,
     level: 3,
     terrain: GROUND,
     produces: 'tool',
@@ -243,6 +264,7 @@ export const DEFS: Record<BuildingType, BuildingDef> = {
   },
   chapel: {
     name: 'Chapel',
+    footprint: 3,
     level: 2,
     terrain: GROUND,
     flammable: true,
@@ -277,6 +299,7 @@ export const DEFS: Record<BuildingType, BuildingDef> = {
   },
   granary: {
     name: 'Granary',
+    footprint: 3,
     level: 3,
     terrain: GROUND,
     storage: true,
@@ -330,6 +353,7 @@ export const DEFS: Record<BuildingType, BuildingDef> = {
   },
   market: {
     name: 'Trading Post',
+    footprint: 3,
     level: 2,
     terrain: GROUND,
     flammable: true,
@@ -339,6 +363,7 @@ export const DEFS: Record<BuildingType, BuildingDef> = {
   },
   barracks: {
     name: 'Barracks',
+    footprint: 3,
     terrain: [...GROUND, ...HIGHLAND],
     flammable: true,
     buildable: true,
@@ -378,6 +403,7 @@ export const DEFS: Record<BuildingType, BuildingDef> = {
   // is one of the Town Charter's terms.
   cathedral: {
     name: 'Cathedral',
+    footprint: 7,
     level: 3,
     terrain: GROUND,
     flammable: false,

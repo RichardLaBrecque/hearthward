@@ -1,8 +1,8 @@
-import { hexCorners, hexesInRange, hexToPixel, neighborKeys, parseKey, type Point } from '../hex';
+import { DIRECTIONS, hexCorners, hexesInRange, hexToPixel, neighborKeys, parseKey, type Point } from '../hex';
 import type { Terrain } from '../map';
 import { hash2, mulberry32 } from '../rng';
 import { demolishError, placeError, tierBlocker, upgradeError } from '../sim/actions';
-import { CHAPEL_RADIUS, DEFS, DIKE_RADIUS, TOWER_RADIUS, WELL_RADIUS, type BuildingType } from '../sim/buildings';
+import { CHAPEL_RADIUS, DEFS, footprintCells, DIKE_RADIUS, TOWER_RADIUS, WELL_RADIUS, type BuildingType } from '../sim/buildings';
 import { MONSTER_STATS, warriorStats } from '../sim/combat';
 import { patrolRadius } from '../sim/military';
 import { linked } from '../sim/network';
@@ -12,7 +12,7 @@ import { calendar, WINTER } from '../sim/seasons';
 import { tradingPost } from '../sim/trade';
 import type { Building, Mover, World } from '../sim/types';
 import { villagerHexes } from '../sim/villagers';
-import { buildingAt } from '../sim/world';
+import { borderOf, buildingAt, cellsOf } from '../sim/world';
 import type { UiState } from '../ui/state';
 import { applyCamera, screenToWorld, type Camera, type Viewport } from './camera';
 import { drawGlyph, fish, type Glyph } from './icons';
@@ -332,10 +332,12 @@ export function plazaTiles(w: World): Set<string> {
   const tiles = new Set<string>();
   for (const b of w.buildings.values()) {
     if (b.type !== 'road') continue;
-    const served = neighborKeys(b.at).filter((n) => {
-      const o = buildingAt(w, n);
-      return o !== undefined && o.type !== 'road';
-    }).length;
+    const served = new Set(
+      neighborKeys(b.at)
+        .map((n) => buildingAt(w, n))
+        .filter((o) => o !== undefined && o.type !== 'road')
+        .map((o) => o!.id),
+    ).size; // a big building beside the road counts once
     if (served >= PLAZA_MIN_BUILDINGS) tiles.add(b.at);
   }
   return tiles;
@@ -371,7 +373,7 @@ function drawRoads(ctx: CanvasRenderingContext2D, w: World, visible: (p: Point) 
   const driveway = new Map<number, string>();
   for (const b of w.buildings.values()) {
     if (b.type === 'road' || b.type === 'hearth') continue;
-    const touching = neighborKeys(b.at).filter((n) => buildingAt(w, n)?.type === 'road');
+    const touching = borderOf(b).filter((n) => buildingAt(w, n)?.type === 'road');
     const pick =
       touching.find((n) => squares.has(n) && w.net.roads.has(n)) ??
       touching.find((n) => w.net.roads.has(n)) ??
@@ -385,10 +387,15 @@ function drawRoads(ctx: CanvasRenderingContext2D, w: World, visible: (p: Point) 
   const segments = (b: Building, fn: (c: Point, mid: Point, n: string) => void): void => {
     const c = center(b.at);
     let any = false;
+    const served = new Set<number>(); // one stub to each building, however many of its hexes touch
     for (const n of neighborKeys(b.at)) {
       const other = buildingAt(w, n);
       if (!other) continue;
       if (other.type === 'road' ? !b.links?.includes(n) : other.type !== 'hearth' && driveway.get(other.id) !== b.at) continue;
+      if (other.type !== 'road') {
+        if (served.has(other.id)) continue;
+        served.add(other.id);
+      }
       const nc = center(n);
       fn(c, { x: (c.x + nc.x) / 2, y: (c.y + nc.y) / 2 }, n);
       any = true;
@@ -472,9 +479,62 @@ function drawRoads(ctx: CanvasRenderingContext2D, w: World, visible: (p: Point) 
   }
 }
 
+// Every hex within `radius` of any of `cells`: a building's reach from its edge.
+function reachOf(cells: string[], radius: number): string[] {
+  return [...new Set(cells.flatMap((k) => hexesInRange(parseKey(k), radius).map((h) => `${h.q},${h.r}`)))];
+}
+
+// Where a building's art sits and how big it's drawn: at the middle of its
+// hexes, scaled up for three- and seven-hex buildings.
+const ART_SCALE: Record<number, number> = { 1: 1, 3: 1.55, 7: 2.4 };
+
+function placement(b: Building): { c: Point; k: number } {
+  const cells = cellsOf(b).map(center);
+  const c = { x: cells.reduce((n, p) => n + p.x, 0) / cells.length, y: cells.reduce((n, p) => n + p.y, 0) / cells.length };
+  return { c, k: ART_SCALE[cells.length] ?? 1 };
+}
+
+// The outline around all of a building's hexes, drawn `inset` pixels in from
+// the hex edges so neighbors keep a margin of open ground between them.
+function buildingPath(ctx: CanvasRenderingContext2D, b: Building, inset: number): void {
+  const cells = cellsOf(b);
+  if (cells.length === 1) return hexPath(ctx, center(b.at), HEX_SIZE - inset);
+  const { c: mid } = placement(b);
+  const own = new Set(cells);
+  const pt = (p: Point) => `${Math.round(p.x * 10)},${Math.round(p.y * 10)}`;
+  // Outer edges only (edge i of a hex faces DIRECTIONS[i]), chained into a loop.
+  const next = new Map<string, Point>();
+  let first: Point | null = null;
+  for (const k of cells) {
+    const corners = hexCorners(center(k), HEX_SIZE);
+    const h = parseKey(k);
+    for (let i = 0; i < 6; i++) {
+      const d = DIRECTIONS[i];
+      if (own.has(`${h.q + d.q},${h.r + d.r}`)) continue;
+      next.set(pt(corners[i]), corners[(i + 1) % 6]);
+      first ??= corners[i];
+    }
+  }
+  const pull = (p: Point): Point => {
+    const dx = mid.x - p.x;
+    const dy = mid.y - p.y;
+    const len = Math.hypot(dx, dy) || 1;
+    return { x: p.x + (dx / len) * inset, y: p.y + (dy / len) * inset };
+  };
+  ctx.beginPath();
+  let p = first!;
+  ctx.moveTo(pull(p).x, pull(p).y);
+  for (let guard = 0; guard < 64; guard++) {
+    p = next.get(pt(p))!;
+    if (!p || pt(p) === pt(first!)) break;
+    ctx.lineTo(pull(p).x, pull(p).y);
+  }
+  ctx.closePath();
+}
+
 function drawBuilding(ctx: CanvasRenderingContext2D, w: World, b: Building, overlay: boolean, now: number): void {
-  const c = center(b.at);
-  hexPath(ctx, c, HEX_SIZE * 0.82);
+  const { c, k } = placement(b);
+  buildingPath(ctx, b, HEX_SIZE * 0.18);
   ctx.fillStyle = BUILDING_WASH[b.type];
   ctx.fill();
   ctx.strokeStyle = INK;
@@ -482,17 +542,17 @@ function drawBuilding(ctx: CanvasRenderingContext2D, w: World, b: Building, over
   ctx.stroke();
   // Upgraded buildings get a double-ruled border.
   if (b.tier > 0) {
-    hexPath(ctx, c, HEX_SIZE * 0.74);
+    buildingPath(ctx, b, HEX_SIZE * 0.26);
     ctx.lineWidth = 0.8;
     ctx.stroke();
   }
 
-  drawGlyph(ctx, glyphFor(b), c.x, c.y - 1, HEX_SIZE * 0.62);
+  drawGlyph(ctx, glyphFor(b), c.x, c.y - 1, HEX_SIZE * 0.62 * k);
 
   // Tier marks: small inked diamonds along the bottom edge.
   for (let i = 0; i < b.tier; i++) {
     const x = c.x - (b.tier - 1) * 4 + i * 8;
-    const y = c.y + HEX_SIZE * 0.58;
+    const y = c.y + HEX_SIZE * 0.58 * k;
     ctx.beginPath();
     ctx.moveTo(x, y - 3);
     ctx.lineTo(x + 3, y);
@@ -506,11 +566,11 @@ function drawBuilding(ctx: CanvasRenderingContext2D, w: World, b: Building, over
   const connected = w.net.buildings.has(b.id);
   if (!connected) {
     ctx.globalAlpha = 0.65 + 0.35 * Math.sin(now / 250);
-    drawGlyph(ctx, 'warning', c.x + HEX_SIZE * 0.5, c.y - HEX_SIZE * 0.5, HEX_SIZE * 0.36);
+    drawGlyph(ctx, 'warning', c.x + HEX_SIZE * 0.5 * k, c.y - HEX_SIZE * 0.5 * k, HEX_SIZE * 0.36);
     ctx.globalAlpha = 1;
   }
   if (overlay) {
-    hexPath(ctx, c, HEX_SIZE * 0.92);
+    buildingPath(ctx, b, HEX_SIZE * 0.08);
     ctx.strokeStyle = connected ? TEAL_INK : VERMILION;
     ctx.lineWidth = 2.5;
     ctx.stroke();
@@ -521,7 +581,7 @@ function drawBuilding(ctx: CanvasRenderingContext2D, w: World, b: Building, over
     const goods = STORED.filter((r) => accepts(b, r));
     const held = goods.reduce((n, r) => n + stockAt(b, r), 0);
     const room = goods.reduce((n, r) => n + holdsAt(b, r), 0);
-    meter(ctx, c, room ? held / room : 0, goods.length === 1 ? RESOURCE_WASH[goods[0]] : INK_SOFT, 0.9);
+    meter(ctx, c, room ? held / room : 0, goods.length === 1 ? RESOURCE_WASH[goods[0]] : INK_SOFT, 0.9 * k);
   }
 
   // An upgrade under way: a gold arrow, and a meter of supplies delivered.
@@ -530,8 +590,8 @@ function drawBuilding(ctx: CanvasRenderingContext2D, w: World, b: Building, over
     const goods = STORED.filter((r) => next[r]);
     const need = goods.reduce((n, r) => n + next[r]!, 0);
     const got = goods.reduce((n, r) => n + (b.order!.supplies[r] ?? 0), 0);
-    drawGlyph(ctx, 'upgrade', c.x - HEX_SIZE * 0.5, c.y - HEX_SIZE * 0.5, HEX_SIZE * 0.32);
-    meter(ctx, c, need ? got / need : 1, '#d9b95a', isStore(b) ? 0.78 : 0.9);
+    drawGlyph(ctx, 'upgrade', c.x - HEX_SIZE * 0.5 * k, c.y - HEX_SIZE * 0.5 * k, HEX_SIZE * 0.32);
+    meter(ctx, c, need ? got / need : 1, '#d9b95a', (isStore(b) ? 0.78 : 0.9) * k);
   }
 
   if (b.blight > 0) {
@@ -553,11 +613,11 @@ function drawBuilding(ctx: CanvasRenderingContext2D, w: World, b: Building, over
 
   if (b.fire > 0) {
     const flicker = 0.5 + 0.5 * Math.sin(now / 90 + b.id);
-    hexPath(ctx, c, HEX_SIZE * 0.82);
+    buildingPath(ctx, b, HEX_SIZE * 0.18);
     ctx.fillStyle = `rgba(181,69,42,${0.25 + 0.25 * flicker})`;
     ctx.fill();
-    drawGlyph(ctx, 'flame', c.x - HEX_SIZE * 0.42, c.y - HEX_SIZE * 0.42, HEX_SIZE * (0.4 + 0.06 * flicker));
-    meter(ctx, c, b.fire, VERMILION, 0.78);
+    drawGlyph(ctx, 'flame', c.x - HEX_SIZE * 0.42 * k, c.y - HEX_SIZE * 0.42 * k, HEX_SIZE * (0.4 + 0.06 * flicker) * k);
+    meter(ctx, c, b.fire, VERMILION, 0.78 * k);
   }
 }
 
@@ -673,8 +733,8 @@ function drawCoverage(ctx: CanvasRenderingContext2D, w: World, visible: (p: Poin
   for (const b of w.buildings.values()) {
     if (!SERVICES.includes(b.type) || !w.net.buildings.has(b.id)) continue;
     const reach = coverageFor(b.type, b)!;
-    for (const h of hexesInRange(parseKey(b.at), reach.radius)) {
-      const c = hexToPixel(h, HEX_SIZE);
+    for (const h of reachOf(cellsOf(b), reach.radius)) {
+      const c = center(h);
       if (!visible(c)) continue;
       hexPath(ctx, c, HEX_SIZE);
       ctx.fillStyle = reach.color;
@@ -756,7 +816,6 @@ function drawVillagers(ctx: CanvasRenderingContext2D, w: World): void {
 function drawHover(ctx: CanvasRenderingContext2D, w: World, ui: UiState): void {
   const k = ui.hover;
   if (!k || !w.terrain.has(k)) return;
-  const c = center(k);
   const tool = ui.tool;
   const hovered = buildingAt(w, k);
 
@@ -764,8 +823,9 @@ function drawHover(ctx: CanvasRenderingContext2D, w: World, ui: UiState): void {
   const covering = tool?.kind === 'build' ? tool.type : !tool ? hovered?.type : undefined;
   const coverage = coverageFor(covering, tool ? undefined : hovered);
   if (coverage) {
-    for (const h of hexesInRange(parseKey(k), coverage.radius)) {
-      hexPath(ctx, hexToPixel(h, HEX_SIZE), HEX_SIZE);
+    const from = tool?.kind === 'build' ? footprintCells(tool.type, k, ui.flip) : hovered ? cellsOf(hovered) : [k];
+    for (const h of reachOf(from, coverage.radius)) {
+      hexPath(ctx, center(h), HEX_SIZE);
       ctx.fillStyle = coverage.color;
       ctx.fill();
     }
@@ -793,8 +853,8 @@ function drawHover(ctx: CanvasRenderingContext2D, w: World, ui: UiState): void {
     const color = coverageFor(types[0], undefined)?.color ?? 'rgba(43,29,14,0.1)';
     for (const o of w.buildings.values()) {
       if (!types.includes(o.type) || !w.net.buildings.has(o.id)) continue;
-      for (const h of hexesInRange(parseKey(o.at), need.within)) {
-        hexPath(ctx, hexToPixel(h, HEX_SIZE), HEX_SIZE);
+      for (const h of reachOf(cellsOf(o), need.within)) {
+        hexPath(ctx, center(h), HEX_SIZE);
         ctx.fillStyle = color;
         ctx.fill();
       }
@@ -802,22 +862,33 @@ function drawHover(ctx: CanvasRenderingContext2D, w: World, ui: UiState): void {
   }
 
   let ok: boolean | null = null;
-  if (tool?.kind === 'build') ok = placeError(w, tool.type, k) === null;
+  if (tool?.kind === 'build') ok = placeError(w, tool.type, k, ui.flip) === null;
   else if (tool?.kind === 'upgrade') ok = upgradeError(w, hovered) === null;
   else if (tool?.kind === 'demolish') ok = demolishError(hovered) === null;
 
-  hexPath(ctx, c, HEX_SIZE);
-  if (ok !== null) {
-    ctx.fillStyle = ok ? 'rgba(90,120,60,0.25)' : 'rgba(181,69,42,0.25)';
-    ctx.fill();
+  // The whole footprint: what a placement would cover, or the building under the cursor.
+  const cells = tool?.kind === 'build' ? footprintCells(tool.type, k, ui.flip) : hovered ? cellsOf(hovered) : [k];
+  const def = tool?.kind === 'build' ? DEFS[tool.type] : undefined;
+  const blocked = (h: string) =>
+    !!def && (!w.revealed.has(h) || !!buildingAt(w, h) || !def.terrain.includes(w.terrain.get(h)!));
+  for (const h of cells) {
+    hexPath(ctx, center(h), HEX_SIZE);
+    if (ok !== null) {
+      ctx.fillStyle = ok ? 'rgba(90,120,60,0.25)' : blocked(h) ? 'rgba(181,69,42,0.45)' : 'rgba(181,69,42,0.2)';
+      ctx.fill();
+    }
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 2;
+    ctx.stroke();
   }
-  ctx.strokeStyle = INK;
-  ctx.lineWidth = 2;
-  ctx.stroke();
 
   if (tool?.kind === 'build' && !hovered && tool.type !== 'road') {
+    const mid = {
+      x: cells.reduce((n, h) => n + center(h).x, 0) / cells.length,
+      y: cells.reduce((n, h) => n + center(h).y, 0) / cells.length,
+    };
     ctx.globalAlpha = 0.5;
-    drawGlyph(ctx, tool.type, c.x, c.y - 1, HEX_SIZE * 0.62);
+    drawGlyph(ctx, tool.type, mid.x, mid.y - 1, HEX_SIZE * 0.62 * (ART_SCALE[cells.length] ?? 1));
     ctx.globalAlpha = 1;
   }
 }

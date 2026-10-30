@@ -40,6 +40,7 @@ A new hamlet opens with a short guided tutorial in the top-left panel: lay a roa
 
 The toolbar groups build tools into tabs (Settle, Gather, Produce, Store & Trade, Defend, Great Works). Hotkeys work from any tab and jump to the tool's tab. A dot marks the tab holding the active tool, and a tab is dimmed while everything in it is locked.
 | U / X | Upgrade / Demolish tool |
+| R | Turn a three-hex building the other way while placing it |
 | C | Cycle map overlays: Roads, Coverage, Traffic, off |
 | Esc / right-click | Clear tool |
 | Space | Pause |
@@ -69,6 +70,21 @@ Drag with the Road or Upgrade tool to paint along a path. Roads only join where 
 | Flood | Spring, from year 2 | Marsh and marshy forest flood for a day (grass and other dry land stay dry, even beside water); roads there are cut and dirt roads may wash out | Dikes (built on or beside marsh or marshy forest) protect within 2 hexes; cobble roads survive |
 | Wolves | Winter | Packs leave the forest and take villagers walking the roads | A manned watchtower drives them off within 3 hexes; warriors kill them |
 | Raiders | From autumn of year 1, outside winter | Bands march in from beyond the map to plunder the nearest stockpile, or burn buildings if there is none; bands grow each year | Barracks warriors intercept them inside their patrol radius |
+
+## Building sizes
+
+Bigger, more important buildings take more room. Every footprint is compact: a single hex, a triangle of three, or a flower of seven (a hex and its ring). A building never changes size when upgraded.
+
+| Hexes | Buildings |
+| --- | --- |
+| 7 | Hearth, Cathedral |
+| 3 | Barracks, Trading Post, Storehouse, Granary, Chapel, Sawmill, Smithy |
+| 1 | Everything else: houses, farms, roads, wells, towers, dikes, gatherers, the dedicated stores |
+
+- Every hex must be open, explored and the right terrain. "Must border" rules count any hex the building covers or touches. Press R to turn a triangle the other way.
+- A building is connected when any of its hexes touches a road joined to the hearth. Villagers walk to whichever of its hexes they reach first.
+- Reach is measured from a building's nearest hex: a well covers a big building when any part of it is within 2 hexes, and a chapel, watchtower or barracks reaches out from its whole footprint.
+- Saves from before sizes existed keep their buildings at one hex each; new buildings take their full size.
 
 ## Economy and military
 

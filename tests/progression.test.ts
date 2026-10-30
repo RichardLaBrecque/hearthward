@@ -49,8 +49,8 @@ describe('settlement levels', () => {
     place(w, 'well', '4,1');
     const farm = place(w, 'farm', '3,1')!;
     expect(upgradeNow(w, farm)).toBe(true);
-    expect(placeError(w, 'storehouse', '2,1')).toBeNull();
-    expect(placeError(w, 'granary', '2,1')).toBe('Requires the Moot Hall');
+    expect(placeError(w, 'storehouse', '1,1')).toBeNull();
+    expect(placeError(w, 'granary', '1,1')).toBe('Requires the Moot Hall');
     const barracks = place(w, 'barracks', '1,1')!;
     expect(upgradeError(w, barracks)).toBe('Requires the Moot Hall');
   });

@@ -18,8 +18,8 @@ const run = (w: ReturnType<typeof flatWorld>, seconds: number) => {
 function garrisoned() {
   const w = flatWorld(10);
   for (const k of ['1,0', '2,0', '3,0']) place(w, 'road', k);
-  place(w, 'storehouse', '4,0');
-  const barracks = place(w, 'barracks', '3,1')!;
+  place(w, 'storehouse', '4,0'); // covers 4,0 5,0 4,1
+  const barracks = place(w, 'barracks', '2,1')!; // covers 2,1 3,1 2,2
   return { w, barracks };
 }
 

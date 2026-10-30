@@ -2,6 +2,7 @@ import { keyDistance, neighborKeys } from '../hex';
 import { DEFS } from './buildings';
 import { isRoad, linked } from './network';
 import type { World } from './types';
+import { cellsOf } from './world';
 
 export interface PathResult {
   path: string[]; // hex keys, start to goal inclusive
@@ -25,6 +26,8 @@ export function moveCost(w: World, k: string): number {
 // A* from any hex to a goal hex. Normally only linked roads are walkable (the start
 // may be anywhere — a building, or a road that was just cut). With `offroad`,
 // villagers may also cross open land, used to rescue stranded villagers.
+// Buildings can cover several hexes: a path ends on whichever hex of the goal's
+// building it reaches first, and may cross the building it starts in.
 export function findPath(w: World, from: string, to: string, offroad = false): PathResult | null {
   if (from === to) return { path: [from], cost: 0 };
   const cacheKey = `${from}>${to}>${offroad ? 1 : 0}`;
@@ -36,8 +39,15 @@ export function findPath(w: World, from: string, to: string, offroad = false): P
   return result;
 }
 
-function walkable(w: World, k: string, to: string, offroad: boolean): boolean {
-  if (k === to || w.net.roads.has(k)) return true;
+// The hexes of whatever building stands on `k`, or just `k`.
+function blockOf(w: World, k: string): Set<string> {
+  const id = w.byHex.get(k);
+  const b = id === undefined ? undefined : w.buildings.get(id)!;
+  return new Set(b && b.type !== 'road' ? cellsOf(b) : [k]);
+}
+
+function walkable(w: World, k: string, ends: Set<string>, offroad: boolean): boolean {
+  if (ends.has(k) || w.net.roads.has(k)) return true;
   if (!offroad) return false;
   const t = w.terrain.get(k);
   if (!t || t === 'water') return false;
@@ -46,6 +56,9 @@ function walkable(w: World, k: string, to: string, offroad: boolean): boolean {
 }
 
 function search(w: World, from: string, to: string, offroad: boolean): PathResult | null {
+  const goal = blockOf(w, to);
+  const ends = new Set([...goal, ...blockOf(w, from)]);
+  if (goal.has(from)) return { path: [from], cost: 0 };
   const g = new Map<string, number>([[from, 0]]);
   const came = new Map<string, string>();
   const open = new MinHeap();
@@ -53,14 +66,14 @@ function search(w: World, from: string, to: string, offroad: boolean): PathResul
 
   while (open.size) {
     const cur = open.pop();
-    if (cur === to) {
-      const path = [to];
-      for (let k = to; came.has(k); ) path.push((k = came.get(k)!));
-      return { path: path.reverse(), cost: g.get(to)! };
+    if (goal.has(cur)) {
+      const path = [cur];
+      for (let k = cur; came.has(k); ) path.push((k = came.get(k)!));
+      return { path: path.reverse(), cost: g.get(cur)! };
     }
     const gCur = g.get(cur)!;
     for (const n of neighborKeys(cur)) {
-      if (!walkable(w, n, to, offroad)) continue;
+      if (!walkable(w, n, ends, offroad)) continue;
       // On the road network, villagers only step between roads that are joined.
       if (!offroad && isRoad(w, cur) && isRoad(w, n) && !linked(w, cur, n)) continue;
       const gNext = gCur + moveCost(w, n);

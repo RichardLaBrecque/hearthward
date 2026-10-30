@@ -7,7 +7,7 @@ import { isConnected } from './network';
 import { take, takeFrom } from './storage';
 import { findPath } from './path';
 import type { Building, Monster, Warrior, World } from './types';
-import { hearth, log, tierOf } from './world';
+import { distanceTo, hearth, isOn, log, tierOf } from './world';
 
 export const RECRUIT_INTERVAL = 15; // seconds between recruits per barracks
 export const RECRUIT_FOOD = 10; // food to equip a newcomer
@@ -75,9 +75,9 @@ function threat(w: World, b: Building): Monster | null {
   const radius = patrolRadius(b);
   let best: Monster | null = null;
   for (const m of w.monsters) {
-    const d = keyDistance(m.at, b.at);
+    const d = distanceTo(b, m.at);
     if (d > radius) continue;
-    if (!best || d < keyDistance(best.at, b.at)) best = m;
+    if (!best || d < distanceTo(b, best.at)) best = m;
   }
   return best;
 }
@@ -89,7 +89,7 @@ function updateWarrior(w: World, x: Warrior, dt: number): void {
 
   if (x.state === 'toPost') {
     if (!x.route && !x.next) {
-      if (x.at === b.at) {
+      if (isOn(w, b, x.at)) {
         x.state = 'guard';
         return;
       }
@@ -116,7 +116,7 @@ function updateWarrior(w: World, x: Warrior, dt: number): void {
 
   if (x.state === 'fight') {
     const m = w.monsters.find((o) => o.id === x.target);
-    if (!m || keyDistance(m.at, b.at) > patrolRadius(b) + 1) {
+    if (!m || distanceTo(b, m.at) > patrolRadius(b) + 1) {
       x.state = 'return';
       x.target = null;
       setRoute(x, null);
@@ -131,7 +131,7 @@ function updateWarrior(w: World, x: Warrior, dt: number): void {
   }
 
   // Returning to post.
-  if (x.at === b.at && !x.next) {
+  if (isOn(w, b, x.at) && !x.next) {
     x.state = 'guard';
     return;
   }
