@@ -131,5 +131,6 @@ export interface World {
   caravan: Caravan | null;
   nextCaravan: number; // sim time the next caravan is due
   net: Network;
+  traffic: Map<string, number>; // footsteps per hex, halved each day; not saved
   pathCache: Map<string, PathResult | null>;
 }

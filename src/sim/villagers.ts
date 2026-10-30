@@ -119,6 +119,7 @@ function advance(w: World, v: Villager, dt: number): void {
   v.t = 0;
   v.idx++;
   v.at = next;
+  w.traffic.set(next, (w.traffic.get(next) ?? 0) + 1);
   if (v.idx === path.length - 1) arrive(w, v);
 }
 

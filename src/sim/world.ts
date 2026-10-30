@@ -41,6 +41,7 @@ export function createWorld(seed: number, custom?: Map<string, Terrain>): World 
     caravan: null,
     nextCaravan: FIRST_CARAVAN,
     net: { version: 0, roads: new Set(), buildings: new Set() },
+    traffic: new Map(),
     pathCache: new Map(),
   };
   const hearth = addBuilding(w, 'hearth', '0,0');

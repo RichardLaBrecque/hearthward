@@ -1,7 +1,7 @@
 import { hexCorners, hexesInRange, hexToPixel, neighborKeys, parseKey, type Point } from '../hex';
 import type { Terrain } from '../map';
 import { hash2, mulberry32 } from '../rng';
-import { demolishError, placeError, upgradeError } from '../sim/actions';
+import { demolishError, placeError, tierBlocker, upgradeError } from '../sim/actions';
 import { CHAPEL_RADIUS, DEFS, DIKE_RADIUS, TOWER_RADIUS, WELL_RADIUS, type BuildingType } from '../sim/buildings';
 import { MONSTER_STATS, warriorStats } from '../sim/combat';
 import { patrolRadius } from '../sim/military';
@@ -23,6 +23,8 @@ import {
   INK,
   INK_FAINT,
   INK_SOFT,
+  MOSS,
+  OCHRE,
   PAPER,
   PAPER_DARK,
   RESOURCE_WASH,
@@ -91,10 +93,13 @@ export function render(ctx: CanvasRenderingContext2D, w: World, cam: Camera, vie
   const winter = calendar(w.time).season === WINTER;
   drawTerrain(ctx, w, visible, winter);
   drawFeatures(ctx, w, visible);
-  drawRoads(ctx, w, visible, ui.overlay);
+  const roads = ui.overlay === 'roads';
+  drawRoads(ctx, w, visible, roads);
   for (const b of w.buildings.values()) {
-    if (b.type !== 'road' && visible(center(b.at))) drawBuilding(ctx, w, b, ui.overlay, now);
+    if (b.type !== 'road' && visible(center(b.at))) drawBuilding(ctx, w, b, roads, now);
   }
+  if (ui.overlay === 'coverage') drawCoverage(ctx, w, visible);
+  if (ui.overlay === 'traffic') drawTraffic(ctx, w, visible);
   drawFloods(ctx, w, visible, now);
   const post = w.caravan ? tradingPost(w) : undefined;
   if (post) {
@@ -656,6 +661,47 @@ function drawWarriors(ctx: CanvasRenderingContext2D, w: World): void {
     ctx.fill();
     ctx.stroke();
     healthBar(ctx, p.x, p.y - 12, x.hp / warriorStats(b).hp, WARRIOR_INK);
+  }
+}
+
+// Coverage: the reach of every well, chapel, watchtower and barracks, and each
+// house ringed by how its next tier stands: green when it can rise (or is
+// rising), ochre when something's missing, vermilion when it's about to fall back.
+const SERVICES: readonly BuildingType[] = ['well', 'chapel', 'tower', 'barracks'];
+
+function drawCoverage(ctx: CanvasRenderingContext2D, w: World, visible: (p: Point) => boolean): void {
+  for (const b of w.buildings.values()) {
+    if (!SERVICES.includes(b.type) || !w.net.buildings.has(b.id)) continue;
+    const reach = coverageFor(b.type, b)!;
+    for (const h of hexesInRange(parseKey(b.at), reach.radius)) {
+      const c = hexToPixel(h, HEX_SIZE);
+      if (!visible(c)) continue;
+      hexPath(ctx, c, HEX_SIZE);
+      ctx.fillStyle = reach.color;
+      ctx.fill();
+    }
+  }
+  ctx.lineWidth = 2.5;
+  for (const b of w.buildings.values()) {
+    const next = DEFS[b.type].tiers[b.tier + 1];
+    const c = center(b.at);
+    if (!visible(c) || !(next?.auto || DEFS[b.type].tiers[b.tier].auto)) continue;
+    const rising = !!b.order || (next?.auto && w.net.buildings.has(b.id) && !tierBlocker(w, b, next));
+    hexPath(ctx, c, HEX_SIZE * 0.92);
+    ctx.strokeStyle = b.lapsed ? VERMILION : rising ? MOSS : OCHRE;
+    ctx.stroke();
+  }
+}
+
+// Traffic: a warm wash over the hexes people walk most.
+function drawTraffic(ctx: CanvasRenderingContext2D, w: World, visible: (p: Point) => boolean): void {
+  const busiest = Math.max(1, ...w.traffic.values());
+  for (const [k, n] of w.traffic) {
+    const c = center(k);
+    if (!visible(c)) continue;
+    hexPath(ctx, c, HEX_SIZE);
+    ctx.fillStyle = `rgba(181,69,42,${(0.08 + 0.5 * Math.sqrt(n / busiest)).toFixed(3)})`;
+    ctx.fill();
   }
 }
 

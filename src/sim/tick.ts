@@ -2,6 +2,7 @@ import { strikeBlight, updateBlight } from './blight';
 import { igniteFires, updateFires } from './events';
 import { recedeFloods, startFlood } from './floods';
 import { updateHomes } from './homes';
+import { fadeTraffic } from './idle';
 import { assignHomes, assignJobs, housingCapacity } from './jobs';
 import { calendar, DAY_LENGTH, WINTER } from './seasons';
 import type { World } from './types';
@@ -117,6 +118,7 @@ function newDay(w: World): void {
     else log(w, cal.year > 1 ? `Spring of year ${cal.year}. Snowmelt swells the waters.` : `Spring of year ${cal.year}.`);
   }
 
+  fadeTraffic(w);
   regrowFish(w);
   igniteFires(w);
   strikeBlight(w);

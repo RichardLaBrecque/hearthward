@@ -6,12 +6,13 @@ import { housingCapacity, jobTotals } from '../sim/jobs';
 import { RECRUIT_FOOD } from '../sim/military';
 import { calendar, DAY_LENGTH, DAYS_PER_SEASON, WINTER } from '../sim/seasons';
 import { GROWTH_FOOD_BASE, GROWTH_FOOD_PER_HEAD, HEAT_PER_HOME } from '../sim/tick';
+import { idleSummary } from '../sim/idle';
 import { ironLeft } from '../sim/land';
 import { charterTerms } from '../sim/progression';
 import { tradingPost } from '../sim/trade';
 import type { World } from '../sim/types';
 
-export type LedgerKey = Resource | 'folk' | 'work' | 'arms' | 'charter';
+export type LedgerKey = Resource | 'folk' | 'work' | 'idle' | 'arms' | 'charter';
 
 const WINDOW = DAY_LENGTH; // sim seconds of history behind each trend
 const MIN_WINDOW = DAY_LENGTH / 3;
@@ -64,6 +65,7 @@ function forecast(w: World) {
 const fmt = (n: number): string => String(Math.floor(n));
 const signed = (n: number): string => (n >= 0.5 ? `+${Math.round(n)}` : n <= -0.5 ? `−${Math.round(-n)}` : '±0');
 const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`;
+const cap = (s: string): string => s[0].toUpperCase() + s.slice(1);
 
 function trendSpan(trend: Trend, r: Resource): string {
   const d = trend.perDay(r);
@@ -138,6 +140,10 @@ export function ledgerCells(w: World, trend: Trend): string {
   cells.push(cell('folk', 'Folk', `${f.pop}/${f.housing}`, growth ? `<span class="flat">${growth}</span>` : '<span class="up">growing</span>'));
   const idle = f.pop - f.jobs.filled;
   cells.push(cell('work', 'Work', `${f.jobs.filled}/${f.jobs.slots}`, `<span class="flat">${idle > 0 ? `${idle} idle` : 'all busy'}</span>`));
+  const stuck = idleSummary(w).reduce((n, g) => n + g.ids.length, 0);
+  cells.push(
+    cell('idle', 'Idle', String(stuck), `<span class="flat">${stuck ? 'click to visit' : 'all working'}</span>`, stuck ? 'stuck' : ''),
+  );
   if (f.arms) {
     const short = f.arms - w.warriors.length;
     cells.push(cell('arms', 'Arms', `${w.warriors.length}/${f.arms}`, `<span class="flat">${short > 0 ? 'recruiting' : 'full'}</span>`));
@@ -253,6 +259,15 @@ export function ledgerTip(w: World, key: LedgerKey, trend: Trend): string {
         row('Idle villagers', String(Math.max(0, idle)), idle > 0 ? 'warn' : '') +
         row('Unfilled jobs', String(Math.max(0, f.jobs.slots - f.jobs.filled)), f.jobs.slots > f.jobs.filled ? 'warn' : '') +
         note('Only buildings connected to the hearth by road offer jobs.')
+      );
+    }
+    case 'idle': {
+      const groups = idleSummary(w);
+      if (!groups.length) return `<h4>Idle buildings</h4>` + note('Every building that can work is working.');
+      return (
+        `<h4>Idle buildings</h4>` +
+        groups.map((g) => row(cap(g.reason), plural(g.ids.length, 'building'), 'warn')).join('') +
+        note('Click to visit them in turn.')
       );
     }
     case 'arms':

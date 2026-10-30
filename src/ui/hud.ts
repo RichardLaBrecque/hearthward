@@ -21,7 +21,8 @@ import { drawGlyph, type Glyph } from '../render/icons';
 import { TERRAIN_NAMES, type Terrain } from '../map';
 import { hotkeyFor, type Command } from './keymap';
 import { ledgerCells, ledgerTip, Trend, type LedgerKey } from './ledger';
-import { SPEEDS, toolKey, type Tool, type UiState } from './state';
+import { OVERLAY_NAMES, SPEEDS, toolKey, type Tool, type UiState } from './state';
+import { idleSummary } from '../sim/idle';
 import { groupOf, TOOL_GROUPS } from './toolGroups';
 import { advanceTutorial, TUTORIAL, tutorialStep, type TutorialWatch } from './tutorial';
 
@@ -34,6 +35,7 @@ export interface HudActions {
   togglePause(): void;
   setSpeed(index: number): void;
   toggleOverlay(): void;
+  focus(at: string): void; // center the map on a hex
   newGame(): void;
   trade(good: TradeGood, dir: 'buy' | 'sell'): void;
 }
@@ -109,6 +111,7 @@ export class Hud {
       }
     });
     this.top.addEventListener('click', (e) => {
+      if ((e.target as HTMLElement).closest('[data-tip="idle"]')) return this.visitIdle();
       const t = (e.target as HTMLElement).closest('[data-act]') as HTMLElement | null;
       if (!t) return;
       const act = t.dataset.act!;
@@ -166,8 +169,8 @@ export class Hud {
     this.overlayBtn = this.toolButton(
       fixedSet,
       'network',
-      'Roads',
-      'Show which roads and buildings reach the hearth',
+      'Overlays',
+      'Cycle map overlays: roads to the hearth, service coverage, foot traffic',
       '',
       hotkeyFor((c) => c.type === 'overlay'),
     );
@@ -228,6 +231,16 @@ export class Hud {
   }
 
   private lastWorld: World | null = null;
+  private idleVisit = 0;
+
+  // Step the camera through idle buildings, most common problem first.
+  private visitIdle(): void {
+    if (!this.lastWorld) return;
+    const ids = idleSummary(this.lastWorld).flatMap((g) => g.ids);
+    if (!ids.length) return;
+    const b = this.lastWorld.buildings.get(ids[this.idleVisit++ % ids.length])!;
+    this.actions.focus(b.at);
+  }
 
   private showTip(): void {
     if (!this.tipKey || !this.lastWorld) return;
@@ -256,7 +269,9 @@ export class Hud {
       const costLabel = locked ? `needs ${levelLabel(need)}` : def.cost ? costText(def.cost) : ' ';
       if (costNode.textContent !== costLabel) costNode.textContent = costLabel;
     }
-    this.overlayBtn.classList.toggle('active', ui.overlay);
+    this.overlayBtn.classList.toggle('active', ui.overlay !== 'none');
+    const overlayName = this.overlayBtn.querySelector('.name')!;
+    if (overlayName.textContent !== OVERLAY_NAMES[ui.overlay]) overlayName.textContent = OVERLAY_NAMES[ui.overlay];
     const inspector = this.inspectorHtml(w, ui);
     this.set(this.inspector, inspector);
     this.inspector.classList.toggle('hidden', !inspector);

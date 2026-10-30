@@ -10,6 +10,8 @@ export const PAPER = '#efe2c0';
 export const PAPER_DARK = '#d9c391';
 export const VERMILION = '#b5452a';
 export const TEAL_INK = '#2f6a66';
+export const MOSS = '#4f6a2c';
+export const OCHRE = '#a8741a';
 
 export const TERRAIN_WASH: Record<Terrain, string> = {
   grass: '#ddd7a3',

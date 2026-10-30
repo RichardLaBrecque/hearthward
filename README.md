@@ -15,6 +15,18 @@ npm run build    # static build in dist/ (relative paths, works offline)
 
 Requires Node 16+.
 
+## Reading the build
+
+The **Overlays** button (key C) cycles through three map modes:
+
+| Mode | Shows |
+| --- | --- |
+| Roads | Which roads and buildings reach the hearth (teal) and which are cut off (vermilion) |
+| Coverage | The reach of every well, chapel, watchtower and barracks. Houses are ringed green when their next tier can rise (or is rising), ochre when something is missing, and vermilion when they're about to fall back |
+| Traffic | A warm wash over the hexes villagers have walked most in the last couple of days. Busy stretches are where a storehouse or a shortcut road pays off |
+
+The top bar's **Idle** stat counts buildings that should be working and aren't: no road to the hearth, no workers, a full store, a used-up source, fire or flood. Fields resting in winter don't count. Hover it for the reasons, and click it to step the camera through the idle buildings one at a time.
+
 ## Tutorial
 
 A new hamlet opens with a short guided tutorial in the top-left panel: lay a road from the hearth, build a woodcutter by the forest, watch the wood come home, then build a well against fire. Each step completes on its own when you have done it, and the tool it wants pulses in the toolbar. Skip it at any time. Saves from before the tutorial existed skip it.
@@ -28,7 +40,7 @@ A new hamlet opens with a short guided tutorial in the top-left panel: lay a roa
 
 The toolbar groups build tools into tabs (Settle, Gather, Store & Trade, Defend, Great Works). Hotkeys work from any tab and jump to the tool's tab. A dot marks the tab holding the active tool, and a tab is dimmed while everything in it is locked.
 | U / X | Upgrade / Demolish tool |
-| C | Road network overlay |
+| C | Cycle map overlays: Roads, Coverage, Traffic, off |
 | Esc / right-click | Clear tool |
 | Space | Pause |
 | - / = | Slower / faster |

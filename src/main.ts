@@ -11,7 +11,7 @@ import { buildingAt, createWorld } from './sim/world';
 import { Hud } from './ui/hud';
 import { Input } from './ui/input';
 import type { Command } from './ui/keymap';
-import { createUiState, SPEEDS, type Tool } from './ui/state';
+import { createUiState, nextOverlay, SPEEDS, type Tool } from './ui/state';
 
 const SAVE_SLOT = 'autosave';
 const AUTOSAVE_INTERVAL = 20_000; // ms
@@ -62,7 +62,12 @@ async function main(): Promise<void> {
       ui.speedIndex = i;
       ui.paused = false;
     },
-    toggleOverlay: () => (ui.overlay = !ui.overlay),
+    toggleOverlay: () => (ui.overlay = nextOverlay(ui.overlay)),
+    focus: (at) => {
+      const p = hexToPixel(parseKey(at), HEX_SIZE);
+      cam.x = p.x;
+      cam.y = p.y;
+    },
     trade: (good, dir) => {
       trade(world, good, dir);
       hud.update(world, ui);
@@ -85,7 +90,7 @@ async function main(): Promise<void> {
         ui.tool = null;
         return;
       case 'overlay':
-        ui.overlay = !ui.overlay;
+        ui.overlay = nextOverlay(ui.overlay);
         return;
       case 'pause':
         ui.paused = !ui.paused;
