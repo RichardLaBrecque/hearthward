@@ -60,20 +60,18 @@ describe('blight', () => {
 });
 
 describe('floods', () => {
-  const riverside = () => flatWorld(8, { '4,0': 'water', '4,-1': 'water' });
+  // A river with a strip of marsh along its west bank; grass beyond.
+  const riverside = () => flatWorld(8, { '4,0': 'water', '4,-1': 'water', '3,0': 'marsh', '3,-1': 'marsh' });
 
   it('cuts flooded roads out of the network until the water recedes', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.99); // no washouts
     const w = riverside();
     for (const k of ['1,0', '2,0', '3,0']) place(w, 'road', k);
-    const farm = place(w, 'farm', '3,1')!;
-    place(w, 'road', '2,1');
     expect(w.net.roads.has('3,0')).toBe(true);
 
     startFlood(w, '4,0');
     expect(w.floods.has('3,0')).toBe(true);
     expect(w.net.roads.has('3,0')).toBe(false);
-    expect(blockedReason(w, farm)).toBe('flooded');
 
     w.time += DAY_LENGTH;
     recedeFloods(w);
@@ -92,9 +90,19 @@ describe('floods', () => {
     expect(buildingAt(w, '3,-1')).toBeUndefined();
   });
 
+  it('floods only marsh: grass beside the water stays dry', () => {
+    const w = riverside();
+    const farm = place(w, 'farm', '3,1')!; // grass on the riverbank
+    startFlood(w, '4,0');
+    expect(w.floods.has('3,0')).toBe(true);
+    expect(w.floods.has('3,1')).toBe(false);
+    expect(blockedReason(w, farm)).not.toBe('flooded');
+  });
+
   it('spares land behind a dike', () => {
     const w = riverside();
     expect(floodZone(w, '4,0')).toContain('3,0');
+    expect(place(w, 'dike', '2,2')).toBeNull(); // dry grass, no marsh beside it
     expect(place(w, 'dike', '3,1')).not.toBeNull();
     expect(floodZone(w, '4,0')).not.toContain('3,0');
   });

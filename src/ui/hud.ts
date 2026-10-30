@@ -1,4 +1,4 @@
-import { canAfford, demolishError, needsText, placeError, prerequisiteMet, residentsFed, upgradeError } from '../sim/actions';
+import { canAfford, costAt, demolishError, needsText, placeError, prerequisiteMet, residentsFed, upgradeError } from '../sim/actions';
 import { DEFS, RESOURCES, type BuildingType, type Cost, type Resource, type Tier } from '../sim/buildings';
 import { hearthLevel, levelLabel, lockedText, MAX_LEVEL, settlementName, unlocksAt } from '../sim/progression';
 import { tenders } from '../sim/blight';
@@ -7,7 +7,7 @@ import { dikeProtects, floodable } from '../sim/floods';
 import { warriorStats } from '../sim/combat';
 import { housingOf, workerSlots } from '../sim/jobs';
 import { patrolRadius, warriorsOf } from '../sim/military';
-import { depletes, FERTILE_BONUS, gatherBonus, gatherTiles, ironLeft, leftAt, MATERIAL, stockLeft, type Material } from '../sim/land';
+import { depletes, FERTILE_BONUS, gatherBonus, gatherTiles, ironLeft, leftAt, MATERIAL, MATERIAL_OF, stockLeft, type Material } from '../sim/land';
 import { mannedTowers } from '../sim/monsters';
 import { holdsAt, stockAt, STORED } from '../sim/storage';
 import { LAPSE_DAYS } from '../sim/homes';
@@ -18,6 +18,7 @@ import type { Building, TradeGood, World } from '../sim/types';
 import { blockedReason, cycleYield } from '../sim/villagers';
 import { buildingAt, hearth } from '../sim/world';
 import { drawGlyph, type Glyph } from '../render/icons';
+import { TERRAIN_NAMES, type Terrain } from '../map';
 import { hotkeyFor, type Command } from './keymap';
 import { ledgerCells, ledgerTip, Trend, type LedgerKey } from './ledger';
 import { SPEEDS, toolKey, type Tool, type UiState } from './state';
@@ -322,7 +323,7 @@ export class Hud {
     if (tool?.kind === 'build') {
       const def = DEFS[tool.type];
       const err = placeError(w, tool.type, k);
-      lines.push(`<h3>${def.name}</h3><div class="dim">${costText(def.tiers[0].cost)}</div>`);
+      lines.push(`<h3>${def.name}</h3><div class="dim">${costText(costAt(w, tool.type, k))}</div>`);
       if (MATERIAL[tool.type] && !b) lines.push(gatherLine(w, tool.type, k, 'Would work'));
       lines.push(err ? `<div class="bad">${err}</div>` : '<div class="good">Click to build</div>');
     } else if (tool?.kind === 'upgrade' && b?.order) {
@@ -417,12 +418,12 @@ export class Hud {
       }
       if (!tool) lines.push(`<div class="dim blurb">${def.blurb}</div>`);
     } else if (!tool) {
-      lines.push(`<h3>${cap(w.terrain.get(k)!)}</h3>`);
+      lines.push(`<h3>${cap(TERRAIN_NAMES[w.terrain.get(k)!])}</h3>`);
       const stock = stockLeft(w, k);
-      const t = w.terrain.get(k);
-      if (stock && (t === 'forest' || t === 'hills' || t === 'water')) {
-        lines.push(`<div class="dim">${Math.floor(stock)} ${MATERIAL_WORDS[t].good} left</div>`);
-      }
+      const material = MATERIAL_OF[w.terrain.get(k)!];
+      if (stock && material) lines.push(`<div class="dim">${Math.floor(stock)} ${MATERIAL_WORDS[material].good} left</div>`);
+      const trait = TERRAIN_TRAITS[w.terrain.get(k)!];
+      if (trait) lines.push(`<div class="dim">${trait}</div>`);
     }
     lines.push(featureLines(w, k));
 
@@ -531,6 +532,14 @@ function requirements(w: World, b: Building, next: Tier): { html: string; met: b
   if (b.type === 'hearth') html += `<div class="dim">Unlocks: ${unlocksAt(b.tier + 2).join(', ')}</div>`;
   return { html, met: checks.every(([ok]) => ok) };
 }
+
+// What sets a terrain apart, for the inspector.
+const TERRAIN_TRAITS: Partial<Record<Terrain, string>> = {
+  meadow: 'Rich soil: farms yield 25% more. Dry grass: fires start and spread twice as fast in summer.',
+  heath: 'Poor soil: farms yield 40% less. Cheap ground: buildings cost 25% less wood and stone.',
+  crags: 'Rocky highland: 200 stone to quarry, and ore in the rock. Leaves heath when worked out.',
+  wetwood: 'Floods in spring. Leaves marsh when cut down.',
+};
 
 const MATERIAL_WORDS: Record<Material, { one: string; many: string; good: string }> = {
   forest: { one: 'forest tile', many: 'forest tiles', good: 'wood' },

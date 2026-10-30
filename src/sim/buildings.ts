@@ -1,4 +1,4 @@
-import type { FeatureKind, Terrain } from '../map';
+import { GROUND, HIGHLAND, type FeatureKind, type Terrain } from '../map';
 
 export type Resource = 'food' | 'wood' | 'stone' | 'iron' | 'coin';
 export const RESOURCES: readonly Resource[] = ['food', 'wood', 'stone', 'iron', 'coin'];
@@ -55,7 +55,7 @@ export interface Prerequisite {
 export interface BuildingDef {
   name: string;
   terrain: readonly Terrain[]; // tiles it may sit on
-  near?: Terrain; // must sit on or touch this terrain
+  near?: readonly Terrain[]; // must sit on or touch one of these terrains
   nearFeature?: FeatureKind; // must sit on or touch this discovery
   produces?: Resource;
   workTime?: number; // seconds per work cycle
@@ -78,13 +78,13 @@ const SUPPLY_RADIUS = 4; // townhouses want a storehouse or trading post this cl
 export const TOWER_RADIUS = 3;
 export const DIKE_RADIUS = 2;
 
-const LAND: readonly Terrain[] = ['grass', 'forest', 'hills', 'marsh'];
+const LAND: readonly Terrain[] = [...GROUND, 'forest', ...HIGHLAND, 'marsh', 'wetwood'];
 
 export const DEFS: Record<BuildingType, BuildingDef> = {
   hearth: {
     name: 'Hearth',
     porters: true,
-    terrain: ['grass'],
+    terrain: GROUND,
     storage: true,
     flammable: false,
     buildable: false,
@@ -108,7 +108,7 @@ export const DEFS: Record<BuildingType, BuildingDef> = {
   },
   house: {
     name: 'House',
-    terrain: ['grass'],
+    terrain: GROUND,
     flammable: true,
     buildable: true,
     blurb: 'Room for villagers. Burns 2 wood a day to stay warm in winter. Improves on its own with a well, a chapel and a store nearby.',
@@ -142,7 +142,7 @@ export const DEFS: Record<BuildingType, BuildingDef> = {
   },
   farm: {
     name: 'Farm',
-    terrain: ['grass'],
+    terrain: GROUND,
     produces: 'food',
     workTime: 12,
     flammable: true,
@@ -162,8 +162,8 @@ export const DEFS: Record<BuildingType, BuildingDef> = {
   },
   woodcutter: {
     name: 'Woodcutter',
-    terrain: ['grass', 'hills', 'forest'],
-    near: 'forest',
+    terrain: [...GROUND, ...HIGHLAND, 'forest', 'wetwood'],
+    near: ['forest', 'wetwood'],
     produces: 'wood',
     workTime: 9,
     flammable: true,
@@ -176,8 +176,8 @@ export const DEFS: Record<BuildingType, BuildingDef> = {
   },
   quarry: {
     name: 'Quarry',
-    terrain: ['grass', 'hills'],
-    near: 'hills',
+    terrain: [...GROUND, ...HIGHLAND],
+    near: HIGHLAND,
     produces: 'stone',
     workTime: 10,
     flammable: false,
@@ -192,7 +192,7 @@ export const DEFS: Record<BuildingType, BuildingDef> = {
     name: 'Storehouse',
     porters: true,
     level: 2,
-    terrain: ['grass'],
+    terrain: GROUND,
     storage: true,
     flammable: true,
     buildable: true,
@@ -202,7 +202,7 @@ export const DEFS: Record<BuildingType, BuildingDef> = {
   chapel: {
     name: 'Chapel',
     level: 2,
-    terrain: ['grass'],
+    terrain: GROUND,
     flammable: true,
     buildable: true,
     blurb: 'A priest tends it. Houses within 3 hexes can grow into townhouses.',
@@ -210,7 +210,7 @@ export const DEFS: Record<BuildingType, BuildingDef> = {
   },
   well: {
     name: 'Well',
-    terrain: ['grass'],
+    terrain: GROUND,
     flammable: false,
     buildable: true,
     blurb: 'Villagers douse fires within 2 hexes.',
@@ -218,7 +218,7 @@ export const DEFS: Record<BuildingType, BuildingDef> = {
   },
   tower: {
     name: 'Watchtower',
-    terrain: ['grass', 'hills'],
+    terrain: [...GROUND, ...HIGHLAND],
     flammable: true,
     buildable: true,
     blurb: 'A posted guard drives off wolves within 3 hexes.',
@@ -226,17 +226,17 @@ export const DEFS: Record<BuildingType, BuildingDef> = {
   },
   dike: {
     name: 'Dike',
-    terrain: ['grass', 'marsh'],
-    near: 'water',
+    terrain: [...GROUND, 'marsh'],
+    near: ['marsh', 'wetwood'],
     flammable: false,
     buildable: true,
-    blurb: 'Holds back spring floods within 2 hexes. Must border water.',
+    blurb: 'Holds back spring floods on marsh and marshy forest within 2 hexes. Must sit on or border either.',
     tiers: [{ label: 'Dike', cost: { wood: 5, stone: 15 } }],
   },
   granary: {
     name: 'Granary',
     level: 3,
-    terrain: ['grass'],
+    terrain: GROUND,
     storage: true,
     accepts: ['food'],
     flammable: true,
@@ -250,7 +250,7 @@ export const DEFS: Record<BuildingType, BuildingDef> = {
   woodshed: {
     name: 'Woodshed',
     level: 2,
-    terrain: ['grass', 'forest'],
+    terrain: [...GROUND, 'forest'],
     storage: true,
     accepts: ['wood'],
     flammable: true,
@@ -264,7 +264,7 @@ export const DEFS: Record<BuildingType, BuildingDef> = {
   stoneyard: {
     name: 'Stone Yard',
     level: 2,
-    terrain: ['grass', 'hills'],
+    terrain: [...GROUND, ...HIGHLAND],
     storage: true,
     accepts: ['stone'],
     flammable: false,
@@ -278,7 +278,7 @@ export const DEFS: Record<BuildingType, BuildingDef> = {
   oreshed: {
     name: 'Ore Shed',
     level: 2,
-    terrain: ['grass', 'hills'],
+    terrain: [...GROUND, ...HIGHLAND],
     storage: true,
     accepts: ['iron'],
     flammable: false,
@@ -289,7 +289,7 @@ export const DEFS: Record<BuildingType, BuildingDef> = {
   market: {
     name: 'Trading Post',
     level: 2,
-    terrain: ['grass'],
+    terrain: GROUND,
     flammable: true,
     buildable: true,
     blurb: 'Caravans stop here to buy and sell goods for coin.',
@@ -297,7 +297,7 @@ export const DEFS: Record<BuildingType, BuildingDef> = {
   },
   barracks: {
     name: 'Barracks',
-    terrain: ['grass', 'hills'],
+    terrain: [...GROUND, ...HIGHLAND],
     flammable: true,
     buildable: true,
     blurb: 'Invites warriors to the hearth. They patrol nearby and fight monsters.',
@@ -309,7 +309,7 @@ export const DEFS: Record<BuildingType, BuildingDef> = {
   mine: {
     name: 'Mine',
     level: 2,
-    terrain: ['grass', 'hills'],
+    terrain: [...GROUND, ...HIGHLAND],
     nearFeature: 'iron',
     produces: 'iron',
     workTime: 12,
@@ -320,8 +320,8 @@ export const DEFS: Record<BuildingType, BuildingDef> = {
   },
   fishery: {
     name: 'Fishery',
-    terrain: ['grass', 'marsh'],
-    near: 'water',
+    terrain: [...GROUND, 'marsh'],
+    near: ['water'],
     produces: 'food',
     workTime: 14, // slower than a field: fishing is steady, not plentiful
     flammable: true,
@@ -337,7 +337,7 @@ export const DEFS: Record<BuildingType, BuildingDef> = {
   cathedral: {
     name: 'Cathedral',
     level: 3,
-    terrain: ['grass'],
+    terrain: GROUND,
     flammable: false,
     buildable: true,
     blurb: 'A great work for a chartered town. Raise it in three stages with the Upgrade tool.',

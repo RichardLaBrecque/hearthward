@@ -7,7 +7,7 @@ import { MONSTER_STATS, warriorStats } from '../sim/combat';
 import { patrolRadius } from '../sim/military';
 import { linked } from '../sim/network';
 import { accepts, holdsAt, isStore, stockAt, STORED } from '../sim/storage';
-import { FISH_STOCK, FOREST_STOCK, gatherTiles, HILLS_STOCK, ironLeft, MATERIAL, stockLeft } from '../sim/land';
+import { CRAGS_STOCK, FISH_STOCK, FOREST_STOCK, gatherTiles, HILLS_STOCK, ironLeft, MATERIAL, stockLeft } from '../sim/land';
 import { calendar, WINTER } from '../sim/seasons';
 import { tradingPost } from '../sim/trade';
 import type { Building, Mover, World } from '../sim/types';
@@ -154,10 +154,24 @@ function drawTerrainInk(ctx: CanvasRenderingContext2D, w: World, k: string, t: T
   ctx.strokeStyle = INK_SOFT;
   ctx.lineWidth = 1.1;
   ctx.lineCap = 'round';
-  if (t === 'forest') {
+  if (t === 'wetwood') {
+    // Marshy forest: water lies between the trees, and reeds grow at their feet.
+    for (const i of [3, 4]) {
+      const p = jitter(i);
+      ctx.beginPath();
+      ctx.moveTo(p.x - 6, p.y + 4);
+      ctx.lineTo(p.x + 6, p.y + 4);
+      ctx.moveTo(p.x - 3, p.y + 7);
+      ctx.lineTo(p.x + 4, p.y + 7);
+      ctx.stroke();
+    }
+  }
+  if (t === 'forest' || t === 'wetwood') {
     // The stand thins as it's cut: felled trees leave stumps.
-    const standing = Math.ceil((3 * stockLeft(w, k)) / FOREST_STOCK);
-    for (let i = 0; i < 3; i++) {
+    const wet = t === 'wetwood';
+    const trees = wet ? 2 : 3;
+    const standing = Math.ceil((trees * stockLeft(w, k)) / FOREST_STOCK);
+    for (let i = 0; i < trees; i++) {
       const p = jitter(i);
       if (i >= standing) {
         ctx.beginPath();
@@ -172,12 +186,19 @@ function drawTerrainInk(ctx: CanvasRenderingContext2D, w: World, k: string, t: T
       ctx.lineTo(p.x - 5, p.y + 3);
       ctx.lineTo(p.x + 5, p.y + 3);
       ctx.closePath();
-      ctx.fillStyle = '#9aa56b';
+      ctx.fillStyle = wet ? '#7f9a76' : '#9aa56b';
       ctx.fill();
       ctx.stroke();
       ctx.beginPath();
       ctx.moveTo(p.x, p.y + 3);
       ctx.lineTo(p.x, p.y + 6);
+      if (wet) {
+        // Roots splayed into the water.
+        ctx.moveTo(p.x, p.y + 4);
+        ctx.lineTo(p.x - 3, p.y + 7);
+        ctx.moveTo(p.x, p.y + 4);
+        ctx.lineTo(p.x + 3, p.y + 7);
+      }
       ctx.stroke();
     }
   } else if (t === 'hills') {
@@ -195,6 +216,65 @@ function drawTerrainInk(ctx: CanvasRenderingContext2D, w: World, k: string, t: T
         ctx.stroke();
       }
     }
+  } else if (t === 'crags') {
+    // Rocky highland: jagged inked peaks, shaded on one flank, wearing down as they're quarried.
+    const peaks = Math.ceil((2 * stockLeft(w, k)) / CRAGS_STOCK);
+    for (let i = 0; i < peaks; i++) {
+      const p = jitter(i);
+      ctx.beginPath();
+      ctx.moveTo(p.x - 8, p.y + 5);
+      ctx.lineTo(p.x - 3, p.y - 5);
+      ctx.lineTo(p.x - 1, p.y - 2);
+      ctx.lineTo(p.x + 2, p.y - 8);
+      ctx.lineTo(p.x + 8, p.y + 5);
+      ctx.closePath();
+      ctx.fillStyle = '#bfb19a';
+      ctx.fill();
+      ctx.stroke();
+      for (let j = 0; j < 3; j++) {
+        ctx.beginPath();
+        ctx.moveTo(p.x + 2.5 + j * 1.8, p.y - 5 + j * 2.8);
+        ctx.lineTo(p.x + 1 + j * 1.8, p.y + 4);
+        ctx.stroke();
+      }
+    }
+  } else if (t === 'meadow') {
+    // Meadow: tufts of tall grass and a scatter of flowers.
+    for (let i = 0; i < 2; i++) {
+      const p = jitter(i);
+      ctx.beginPath();
+      ctx.moveTo(p.x - 3, p.y + 2);
+      ctx.lineTo(p.x - 2, p.y - 4);
+      ctx.moveTo(p.x, p.y + 2);
+      ctx.lineTo(p.x, p.y - 5);
+      ctx.moveTo(p.x + 3, p.y + 2);
+      ctx.lineTo(p.x + 2, p.y - 4);
+      ctx.stroke();
+    }
+    for (let i = 2; i < 6; i++) {
+      const p = jitter(i);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 1.6, 0, Math.PI * 2);
+      ctx.fillStyle = i % 2 ? '#e8d27a' : '#efe2c0';
+      ctx.fill();
+      ctx.stroke();
+    }
+  } else if (t === 'heath') {
+    // Heath: low rounded scrub and bare stones.
+    for (let i = 0; i < 3; i++) {
+      const p = jitter(i);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y + 2, 3.2, Math.PI, Math.PI * 2);
+      ctx.fillStyle = '#a69466';
+      ctx.fill();
+      ctx.stroke();
+    }
+    const p = jitter(4);
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y + 3, 2.5, 1.6, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#c9c1ae';
+    ctx.fill();
+    ctx.stroke();
   } else if (t === 'water') {
     for (let i = 0; i < 2; i++) {
       const p = jitter(i);

@@ -1,7 +1,7 @@
 // What the land holds: forests, hills, iron veins and fishing waters are worked
 // by gathering buildings, and discoveries in the fog reward reaching them.
 import { neighborKeys } from '../hex';
-import type { FeatureKind } from '../map';
+import type { FeatureKind, Terrain } from '../map';
 import type { BuildingType } from './buildings';
 import type { Building, World } from './types';
 import { store } from './storage';
@@ -9,6 +9,7 @@ import { hearth, log, spawnVillager } from './world';
 
 export const FOREST_STOCK = 100; // wood in a stand of forest
 export const HILLS_STOCK = 120; // stone in a hill
+export const CRAGS_STOCK = 200; // stone in a hex of rocky highland
 export const IRON_STOCK = 80; // iron in a vein
 export const FISH_STOCK = 40; // food in a stretch of water
 export const FISH_REGROWTH = 3; // fish come back each day, up to FISH_STOCK
@@ -28,7 +29,33 @@ export const MATERIAL: Partial<Record<BuildingType, Material>> = {
   mine: 'iron',
 };
 
-const STOCK: Record<Exclude<Material, 'iron'>, number> = { forest: FOREST_STOCK, hills: HILLS_STOCK, water: FISH_STOCK };
+// What a fresh hex holds, by terrain.
+const STOCK: Partial<Record<Terrain, number>> = {
+  forest: FOREST_STOCK,
+  wetwood: FOREST_STOCK,
+  hills: HILLS_STOCK,
+  crags: CRAGS_STOCK,
+  water: FISH_STOCK,
+};
+
+// Which material a terrain holds: marshy forest is worked like any forest, and
+// rocky highland like hills.
+export const MATERIAL_OF: Partial<Record<Terrain, Exclude<Material, 'iron'>>> = {
+  forest: 'forest',
+  wetwood: 'forest',
+  hills: 'hills',
+  crags: 'hills',
+  water: 'water',
+};
+
+// What land is left once it's worked out: marshy forest leaves marsh, rocky
+// highland leaves stony heath, and the rest clears to grass.
+export const clearedTerrain = (t: Terrain | undefined): Terrain => (t === 'wetwood' ? 'marsh' : t === 'crags' ? 'heath' : 'grass');
+
+// Soil: farms on meadow yield more, on heath less.
+export const SOIL: Partial<Record<Terrain, number>> = { meadow: 1.25, heath: 0.6 };
+// Heath is cheap ground to build on: wood and stone costs are cut by this share.
+export const HEATH_DISCOUNT = 0.25;
 
 // Deposits are keyed by hex; iron veins get their own key so a vein on a hill
 // and the hill's stone are tracked separately.
@@ -40,14 +67,15 @@ export const ironLeft = (w: World, k: string): number =>
 // What's left of `material` at hex `k`.
 export function leftAt(w: World, k: string, material: Material): number {
   if (material === 'iron') return ironLeft(w, k);
-  if (w.terrain.get(k) !== material) return 0;
-  return w.deposits.get(k) ?? STOCK[material];
+  const t = w.terrain.get(k)!;
+  if (MATERIAL_OF[t] !== material) return 0;
+  return w.deposits.get(k) ?? STOCK[t]!;
 }
 
 // What's left of whatever the terrain at `k` holds (forest, hills or water).
 export function stockLeft(w: World, k: string): number {
-  const t = w.terrain.get(k);
-  return t === 'forest' || t === 'hills' || t === 'water' ? leftAt(w, k, t) : 0;
+  const material = MATERIAL_OF[w.terrain.get(k)!];
+  return material ? leftAt(w, k, material) : 0;
 }
 
 export const featureAt = (w: World, k: string): FeatureKind | undefined => {
@@ -76,7 +104,7 @@ export function remainingFor(w: World, b: Building): number {
 }
 
 // Draw `amount` evenly from every tile being worked. Spent forest clears to
-// grass, spent hills are quarried flat, spent veins close, and fished-out water
+// grass (marshy forest to marsh), spent hills are quarried flat, spent veins close, and fished-out water
 // recovers over time.
 export function deplete(w: World, b: Building, amount: number): void {
   const material = MATERIAL[b.type];
@@ -95,7 +123,7 @@ export function deplete(w: World, b: Building, amount: number): void {
       w.deposits.set(ironKey(k), 0);
     } else {
       w.deposits.set(k, 0); // kept at zero so a load knows this hex was worked out
-      if (material !== 'water') w.terrain.set(k, 'grass');
+      if (material !== 'water') w.terrain.set(k, clearedTerrain(w.terrain.get(k)));
     }
   }
   if (spent) log(w, SPENT[material], 'warn');

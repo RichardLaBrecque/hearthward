@@ -3,7 +3,7 @@ import { DEFS } from './buildings';
 import { releaseJob } from './jobs';
 import { arriveHaul, resumeHaul, startHaul } from './haul';
 import { accepts, connectedStores, dropOffRoom, isGeneralStore, put, roomAt } from './storage';
-import { deplete, depletes, FERTILE_BONUS, gatherBonus, sourcesOf } from './land';
+import { deplete, depletes, FERTILE_BONUS, gatherBonus, SOIL, sourcesOf } from './land';
 import { findPath, moveCost } from './path';
 import { calendar, FARM_SEASON_MULT, WINTER } from './seasons';
 import type { Building, Villager, VillagerState, World } from './types';
@@ -37,6 +37,7 @@ export function cycleYield(w: World, b: Building): number {
     const farms = neighborKeys(b.at).filter((k) => buildingAt(w, k)?.type === 'farm').length;
     amount *= (1 + FARM_NEIGHBOR_BONUS * Math.min(farms, 3)) * FARM_SEASON_MULT[calendar(w.time).season];
     if (w.features.get(b.at) === 'fertile') amount *= 1 + FERTILE_BONUS;
+    amount *= SOIL[w.terrain.get(b.at)!] ?? 1;
   }
   if (depletes(b)) amount *= gatherBonus(sourcesOf(w, b).length);
   if (b.type === 'fishery' && calendar(w.time).season === WINTER) amount *= WINTER_CATCH;

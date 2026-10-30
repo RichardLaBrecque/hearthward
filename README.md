@@ -54,7 +54,7 @@ Drag with the Road or Upgrade tool to paint along a path. Roads only join where 
 | Winter | Every winter | Farms lie fallow, and each occupied home burns 2 wood a day | Stockpile food and wood |
 | Fire | Any time after the first season, worst in summer | Spreads between neighboring buildings | Wells douse fires within 2 hexes |
 | Blight | Summer and autumn | A field stops producing, rots, and spreads to neighboring farms | Keep farms staffed; frost kills it |
-| Flood | Spring, from year 2 | Land beside water, and all marsh, floods for a day; roads there are cut and dirt roads may wash out | Dikes protect within 2 hexes; cobble roads survive |
+| Flood | Spring, from year 2 | Marsh and marshy forest flood for a day (grass and other dry land stay dry, even beside water); roads there are cut and dirt roads may wash out | Dikes (built on or beside marsh or marshy forest) protect within 2 hexes; cobble roads survive |
 | Wolves | Winter | Packs leave the forest and take villagers walking the roads | A manned watchtower drives them off within 3 hexes; warriors kill them |
 | Raiders | From autumn of year 1, outside winter | Bands march in from beyond the map to plunder the nearest stockpile, or burn buildings if there is none; bands grow each year | Barracks warriors intercept them inside their patrol radius |
 
@@ -108,6 +108,15 @@ The hearth is the settlement's progression track. Use the Upgrade tool on it onc
 Requirements are data: a building's `level`, and a tier's `level`, `pop` and `needs`, in `src/sim/buildings.ts`.
 
 ## Expanding and winning
+
+**Biomes.** Most land is grass, forest, hills, marsh and water. A few rarer terrains change how a spot plays. Each covers only a few percent of the land. Hover a hex to see its traits.
+
+| Terrain | Where | What it changes |
+| --- | --- | --- |
+| Marshy forest | Forest on the edge of water or marsh | Worked by woodcutters like any forest, but floods in spring. Leaves marsh when cut down |
+| Rocky highland | The tops of the hills | 200 stone to quarry (hills hold 120), and one extra iron vein per map. Leaves heath when worked out |
+| Meadow | Patches of open grassland | Farms yield 25% more. In summer, buildings there catch fire, and fire spreads to them, twice as readily |
+| Heath | Patches of poor ground | Farms yield 40% less. Buildings placed there cost 25% less wood and stone |
 
 **The land runs out.** Each forest hex holds 100 wood, each hill 120 stone, and each iron vein 80 iron. Woodcutters, quarries and mines draw from what they touch. Forests thin to stumps and then clear to grass, which is new farmland. Hills are quarried flat. Veins close. When its source runs out, a producer stands idle and says why, so production keeps moving outward.
 

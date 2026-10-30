@@ -1,8 +1,9 @@
 // Player actions: placing, upgrading and demolishing buildings.
 import { keyDistance, neighborKeys } from '../hex';
+import { TERRAIN_NAMES } from '../map';
 import { DEFS, RESOURCES, type BuildingType, type Cost, type Prerequisite, type Resource, type Tier } from './buildings';
 import { warriorStats } from './combat';
-import { featureAt, FEATURE_NAMES } from './land';
+import { featureAt, FEATURE_NAMES, HEATH_DISCOUNT } from './land';
 import { isConnected, isRoad, link, linked, linksOf } from './network';
 import { isStored, store, STORED, take } from './storage';
 import { hearthLevel, levelLabel, lockedText, settlementName, unlocksAt } from './progression';
@@ -27,22 +28,31 @@ export function placeError(w: World, type: BuildingType, at: string): string | n
   const terrain = w.terrain.get(at);
   if (!terrain || !w.revealed.has(at)) return 'Unexplored';
   if (buildingAt(w, at)) return 'Occupied';
-  if (!def.terrain.includes(terrain)) return `Can't build on ${terrain}`;
-  if (def.near && terrain !== def.near && !neighborKeys(at).some((n) => w.terrain.get(n) === def.near)) {
-    return `Must border ${def.near}`;
+  if (!def.terrain.includes(terrain)) return `Can't build on ${TERRAIN_NAMES[terrain]}`;
+  const near = def.near;
+  if (near && !near.includes(terrain) && !neighborKeys(at).some((n) => near.includes(w.terrain.get(n)!))) {
+    return `Must border ${near.map((t) => TERRAIN_NAMES[t]).join(' or ')}`;
   }
   if (def.nearFeature && ![at, ...neighborKeys(at)].some((n) => w.revealed.has(n) && featureAt(w, n) === def.nearFeature)) {
     return `Must be on or beside ${FEATURE_NAMES[def.nearFeature]}`;
   }
-  if (!canAfford(w, def.tiers[0].cost)) return 'Not enough resources';
+  if (!canAfford(w, costAt(w, type, at))) return 'Not enough resources';
   return null;
+}
+
+// What placing `type` at `at` costs: heath is cheap ground, cutting wood and stone.
+export function costAt(w: World, type: BuildingType, at: string): Cost {
+  const cost = { ...DEFS[type].tiers[0].cost };
+  if (w.terrain.get(at) !== 'heath') return cost;
+  for (const r of ['wood', 'stone'] as const) if (cost[r]) cost[r] = Math.ceil(cost[r]! * (1 - HEATH_DISCOUNT));
+  return cost;
 }
 
 // `from` is the previous hex of a drag: a new road joins it. Without one
 // (a click, or the first hex of a drag) the road joins its neighbors on its own.
 export function place(w: World, type: BuildingType, at: string, from?: string): Building | null {
   if (placeError(w, type, at)) return null;
-  pay(w, DEFS[type].tiers[0].cost, at);
+  pay(w, costAt(w, type, at), at);
   const b = addBuilding(w, type, at);
   if (type === 'road') {
     if (from && isRoad(w, from) && neighborKeys(at).includes(from)) link(w, at, from);

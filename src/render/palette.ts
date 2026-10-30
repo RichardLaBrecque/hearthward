@@ -13,10 +13,14 @@ export const TEAL_INK = '#2f6a66';
 
 export const TERRAIN_WASH: Record<Terrain, string> = {
   grass: '#ddd7a3',
+  meadow: '#d6dc96',
+  heath: '#d6c8a0',
+  crags: '#cfc1a3',
   forest: '#b9c08f',
   hills: '#dcc495',
   water: '#a7bcbc',
   marsh: '#c4c9a2',
+  wetwood: '#adbd95',
 };
 
 export const BUILDING_WASH: Record<BuildingType, string> = {

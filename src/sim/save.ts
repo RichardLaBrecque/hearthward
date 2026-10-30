@@ -2,6 +2,7 @@ import type { BuildingType, Resource } from './buildings';
 import { neighborKeys } from '../hex';
 import { isRoad, link, rebuildNetwork } from './network';
 import type { Building, Caravan, LogEntry, Monster, UpgradeOrder, Villager, Warrior, World } from './types';
+import { clearedTerrain } from './land';
 import { stockAt, store, STORED, syncTotals } from './storage';
 import { createWorld, hearth } from './world';
 
@@ -162,7 +163,7 @@ export function deserialize(json: string): World | null {
   // Saves from before roads had joins: join every pair of touching roads, as they used to behave.
   // Terrain comes back from the seed, so re-clear forest and hills that were worked out.
   for (const [k, left] of w.deposits) {
-    if (left <= 0 && !k.startsWith('iron@') && w.terrain.get(k) !== 'water') w.terrain.set(k, 'grass');
+    if (left <= 0 && !k.startsWith('iron@') && w.terrain.get(k) !== 'water') w.terrain.set(k, clearedTerrain(w.terrain.get(k)));
   }
   // Caravans saved before iron was traded.
   if (w.caravan && w.caravan.buy.iron === undefined) {

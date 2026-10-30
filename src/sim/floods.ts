@@ -1,21 +1,18 @@
-import { hexesInRange, key, keyDistance, neighborKeys, parseKey } from '../hex';
+import { hexesInRange, key, keyDistance, parseKey } from '../hex';
+import type { Terrain } from '../map';
 import { DIKE_RADIUS } from './buildings';
 import { calendar, DAY_LENGTH, DAYS_PER_SEASON } from './seasons';
 import type { World } from './types';
 import { buildingAt, hearth, log, refreshNetwork, removeBuilding } from './world';
 
 const FLOOD_CHANCE = 0.35; // per spring day
-const SOURCE_RANGE = 8; // floods start from water this close to the hearth
+const SOURCE_RANGE = 8; // floods start from water or marsh this close to the hearth
 const FLOOD_REACH = 3;
 const WASHOUT_CHANCE = 0.25; // dirt roads caught in a flood
 
-// Marsh always floods; other land floods when it borders open water.
-export function floodable(w: World, k: string): boolean {
-  const t = w.terrain.get(k);
-  if (!t || t === 'water') return false;
-  if (t === 'marsh') return true;
-  return neighborKeys(k).some((n) => w.terrain.get(n) === 'water');
-}
+// Only marsh and marshy forest flood; grass and other dry land stay dry, even beside water.
+export const floodable = (w: World, k: string): boolean => WET.includes(w.terrain.get(k)!);
+const WET: readonly Terrain[] = ['marsh', 'wetwood'];
 
 export const dikeProtects = (w: World, k: string): boolean =>
   [...w.buildings.values()].some((b) => b.type === 'dike' && keyDistance(b.at, k) <= DIKE_RADIUS);
@@ -34,7 +31,7 @@ export function startFlood(w: World, source?: string): void {
     if (cal.season !== 0 || cal.day < DAYS_PER_SEASON || Math.random() >= FLOOD_CHANCE) return;
     const home = hearth(w).at;
     const sources = [...w.terrain]
-      .filter(([k, t]) => t === 'water' && w.revealed.has(k) && keyDistance(k, home) <= SOURCE_RANGE)
+      .filter(([k, t]) => (t === 'water' || WET.includes(t)) && w.revealed.has(k) && keyDistance(k, home) <= SOURCE_RANGE)
       .map(([k]) => k);
     if (!sources.length) return;
     source = sources[Math.floor(Math.random() * sources.length)];

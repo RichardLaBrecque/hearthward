@@ -10,6 +10,10 @@ const BURN_RATE = 0.04; // ~25s to burn down
 const DOUSE_RATE = 0.15;
 const SPREAD_RATE = 0.06; // per neighbor per second once a fire takes hold
 const SPREAD_THRESHOLD = 0.25;
+const MEADOW_FIRE = 2; // dry summer grass: fires start and spread this much more readily on meadow
+
+const tinder = (w: World, b: Building): number =>
+  calendar(w.time).season === 1 && w.terrain.get(b.at) === 'meadow' ? MEADOW_FIRE : 1;
 
 export function igniteFires(w: World): void {
   const cal = calendar(w.time);
@@ -18,7 +22,7 @@ export function igniteFires(w: World): void {
   for (const b of w.buildings.values()) {
     if (!DEFS[b.type].flammable || b.fire > 0) continue;
     const sturdy = b.tier > 0 ? 0.5 : 1;
-    if (Math.random() < IGNITE_CHANCE * summer * sturdy) {
+    if (Math.random() < IGNITE_CHANCE * summer * sturdy * tinder(w, b)) {
       b.fire = 0.01;
       log(w, `Fire! The ${DEFS[b.type].name.toLowerCase()} is burning.`, 'bad');
     }
@@ -46,7 +50,7 @@ export function updateFires(w: World, dt: number): void {
     } else if (b.fire > SPREAD_THRESHOLD) {
       for (const n of neighborKeys(b.at)) {
         const nb = buildingAt(w, n);
-        if (nb && DEFS[nb.type].flammable && nb.fire === 0 && Math.random() < SPREAD_RATE * dt) {
+        if (nb && DEFS[nb.type].flammable && nb.fire === 0 && Math.random() < SPREAD_RATE * tinder(w, nb) * dt) {
           nb.fire = 0.01;
           log(w, `Fire spreads to the ${DEFS[nb.type].name.toLowerCase()}!`, 'bad');
         }
