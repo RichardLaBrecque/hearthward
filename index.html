@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hearthward</title>
+    <style>
+      :root {
+        --ink: #2b1d0e;
+        --ink-soft: rgba(43, 29, 14, 0.6);
+        --paper: #f1e4c3;
+        --paper-hi: #f7eed6;
+        --paper-dark: #d9c391;
+        --vermilion: #b5452a;
+        --moss: #4f6a2c;
+        --ochre: #a8741a;
+        --serif: 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Palatino, Georgia, serif;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: var(--serif);
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      #game {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        display: block;
+        touch-action: none;
+      }
+      #hud {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+      }
+      #hud > * {
+        pointer-events: auto;
+      }
+      .hidden {
+        display: none !important;
+      }
+
+      /* Parchment panels with a double ink rule */
+      .panel {
+        background: var(--paper-hi);
+        border: 1.5px solid var(--ink);
+        outline: 1px solid var(--ink-soft);
+        outline-offset: 2px;
+        box-shadow: 0 3px 10px rgba(60, 35, 10, 0.25);
+      }
+      button {
+        font: inherit;
+        color: var(--ink);
+        background: var(--paper);
+        border: 1.2px solid var(--ink);
+        border-radius: 2px;
+        cursor: pointer;
+        padding: 3px 9px;
+      }
+      button:hover {
+        background: var(--paper-dark);
+      }
+      button.on,
+      button.active,
+      button.primary {
+        background: var(--ink);
+        color: var(--paper-hi);
+      }
+      kbd {
+        font-family: var(--serif);
+        font-size: 10px;
+        border: 1px solid var(--ink-soft);
+        border-radius: 2px;
+        padding: 0 3px;
+        opacity: 0.7;
+      }
+
+      .topbar {
+        position: absolute;
+        top: 12px;
+        left: 0;
+        right: 0;
+        margin: 0 auto;
+        width: max-content;
+        display: flex;
+        gap: 22px;
+        align-items: center;
+        padding: 7px 16px;
+        max-width: calc(100% - 24px);
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+      .topbar .group {
+        display: flex;
+        gap: 14px;
+        align-items: center;
+      }
+      .topbar .group button {
+        padding: 2px 8px;
+        font-size: 13px;
+      }
+      .topbar .group:last-child {
+        gap: 4px;
+      }
+      .stat {
+        font-size: 16px;
+        white-space: nowrap;
+        font-variant-numeric: oldstyle-nums;
+        display: inline-flex;
+        flex-direction: column;
+        line-height: 1.15;
+      }
+      .stat[data-tip] {
+        cursor: help;
+        padding: 1px 4px;
+        border-radius: 2px;
+      }
+      .stat[data-tip]:hover {
+        background: var(--paper);
+      }
+      .stat i {
+        font-size: 12px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        font-style: normal;
+        opacity: 0.65;
+      }
+      .stat .cap {
+        font-size: 12px;
+        opacity: 0.6;
+      }
+      .stat .sub {
+        font-size: 11px;
+        font-style: italic;
+        color: var(--ink);
+      }
+      .stat .meter {
+        display: block;
+        height: 3px;
+        margin: 2px 0 1px;
+        border: 1px solid var(--ink-soft);
+        box-sizing: content-box;
+      }
+      .stat .meter b {
+        display: block;
+        height: 100%;
+        background: var(--moss);
+      }
+      .stat .meter.full b {
+        background: var(--ochre);
+      }
+      .up {
+        color: var(--moss);
+      }
+      .down {
+        color: var(--vermilion);
+      }
+      .flat {
+        opacity: 0.6;
+      }
+      .stat.low .main {
+        color: var(--vermilion);
+      }
+      .stat.over .main {
+        color: var(--ochre);
+      }
+      .stat.won .main {
+        color: var(--moss);
+        font-weight: 600;
+      }
+
+      .tip {
+        position: fixed;
+        width: 290px;
+        padding: 9px 12px;
+        font-size: 13px;
+        line-height: 1.45;
+        pointer-events: none !important;
+        z-index: 5;
+      }
+      .tip h4 {
+        margin: 0 0 4px;
+        font-size: 15px;
+        font-weight: 600;
+        border-bottom: 1px solid var(--ink-soft);
+        padding-bottom: 2px;
+      }
+      .tip .row {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .tip .row b {
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      .tip .row.good b {
+        color: var(--moss);
+      }
+      .tip .row.warn b {
+        color: var(--ochre);
+      }
+      .tip .row.bad b {
+        color: var(--vermilion);
+      }
+      .tip .note {
+        font-size: 12px;
+        font-style: italic;
+        margin: -1px 0 3px 8px;
+      }
+      .tip .note.dim {
+        opacity: 0.65;
+      }
+      .stat.settlement {
+        font-variant: small-caps;
+        letter-spacing: 0.05em;
+        font-weight: 600;
+        border-right: 1px solid var(--ink-soft);
+        padding-right: 12px;
+      }
+      .stat.settlement.ready {
+        color: var(--moss);
+      }
+      .calendar {
+        flex-direction: column;
+        gap: 3px !important;
+        font-style: italic;
+        min-width: 190px;
+      }
+      .calendar .bar {
+        width: 100%;
+        height: 4px;
+        border: 1px solid var(--ink);
+      }
+      .calendar .bar div {
+        height: 100%;
+        background: var(--ink);
+      }
+      .season-3 {
+        color: #3b5566;
+      }
+      .season-3 .bar div {
+        background: #3b5566;
+      }
+
+      .toolbar {
+        position: absolute;
+        bottom: 12px;
+        left: 0;
+        right: 0;
+        margin: 0 auto;
+        width: max-content;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: 4px 6px 6px;
+        max-width: calc(100% - 24px);
+        overflow-x: auto;
+      }
+      .tabs {
+        display: flex;
+        gap: 2px;
+        border-bottom: 1px solid var(--ink-soft);
+      }
+      .tab {
+        border: none;
+        background: transparent;
+        font-variant: small-caps;
+        letter-spacing: 0.05em;
+        font-size: 14px;
+        padding: 2px 10px 3px;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -1px;
+        border-radius: 0;
+        opacity: 0.7;
+        position: relative;
+      }
+      .tab:hover {
+        background: transparent;
+        opacity: 1;
+      }
+      .tab.on {
+        opacity: 1;
+        font-weight: 600;
+        border-bottom-color: var(--ink);
+        background: transparent;
+        color: var(--ink);
+      }
+      .tab.locked {
+        opacity: 0.35;
+      }
+      /* A small mark on the tab that holds the active tool. */
+      .tab.holds-active::after {
+        content: '';
+        position: absolute;
+        top: 4px;
+        right: 2px;
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: var(--ink);
+      }
+      .tool-row {
+        display: flex;
+        gap: 4px;
+        justify-content: space-between;
+        min-width: 560px;
+      }
+      .tool-set {
+        display: flex;
+        gap: 4px;
+      }
+      .tool-set.fixed {
+        border-left: 1px solid var(--ink-soft);
+        padding-left: 6px;
+      }
+      .tool {
+        display: grid;
+        grid-template-rows: 30px auto auto;
+        justify-items: center;
+        gap: 1px;
+        width: 72px;
+        padding: 5px 2px 4px;
+        position: relative;
+        border-color: transparent;
+        background: transparent;
+      }
+      .tool:hover {
+        border-color: var(--ink-soft);
+        background: var(--paper);
+      }
+      .tool.active {
+        background: var(--paper-dark);
+        border-color: var(--ink);
+        color: var(--ink);
+      }
+      .tool .name {
+        font-size: 13px;
+      }
+      .tool .cost {
+        font-size: 10px;
+        opacity: 0.7;
+        font-style: italic;
+        white-space: nowrap;
+      }
+      .tool.poor .cost {
+        color: var(--vermilion);
+        opacity: 1;
+      }
+      .tool.poor canvas {
+        opacity: 0.45;
+      }
+      .tool.locked {
+        opacity: 0.5;
+      }
+      .tool.locked canvas {
+        filter: grayscale(1);
+      }
+      .tool.locked .cost {
+        color: var(--ink);
+      }
+      .tool kbd {
+        position: absolute;
+        top: 2px;
+        right: 3px;
+      }
+
+      .inspector {
+        position: absolute;
+        left: 12px;
+        bottom: 135px;
+        width: 230px;
+        padding: 9px 12px;
+        font-size: 14px;
+        line-height: 1.4;
+      }
+      .inspector h3 {
+        margin: 0 0 2px;
+        font-size: 16px;
+        font-weight: 600;
+        border-bottom: 1px solid var(--ink-soft);
+        padding-bottom: 2px;
+      }
+      .inspector h3:not(:first-child) {
+        margin-top: 8px;
+      }
+      .dim {
+        opacity: 0.7;
+        font-style: italic;
+      }
+      .blurb {
+        margin-top: 4px;
+        font-size: 13px;
+      }
+      .good {
+        color: var(--moss);
+      }
+      .warn {
+        color: var(--ochre);
+      }
+      .bad {
+        color: var(--vermilion);
+      }
+
+      .log {
+        position: absolute;
+        right: 14px;
+        top: 76px;
+        width: 300px;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        align-items: flex-end;
+        pointer-events: none !important;
+      }
+      .msg {
+        font-style: italic;
+        font-size: 14px;
+        text-align: right;
+        text-shadow: 0 0 4px var(--paper-hi), 0 0 8px var(--paper-hi);
+      }
+      .msg.warn {
+        color: var(--ochre);
+      }
+      .msg.bad {
+        color: var(--vermilion);
+      }
+
+      .market {
+        position: absolute;
+        right: 12px;
+        bottom: 135px;
+        padding: 9px 12px;
+        font-size: 14px;
+      }
+      .market h3 {
+        margin: 0 0 2px;
+        font-size: 16px;
+        font-weight: 600;
+        border-bottom: 1px solid var(--ink-soft);
+        padding-bottom: 2px;
+      }
+      .market table {
+        border-collapse: collapse;
+        margin-top: 6px;
+      }
+      .market th {
+        font-weight: normal;
+        font-size: 12px;
+        text-align: left;
+        padding: 0 6px;
+      }
+      .market td {
+        padding: 3px 6px;
+        white-space: nowrap;
+      }
+      .market td button {
+        font-size: 12px;
+        padding: 1px 6px;
+        margin-right: 4px;
+      }
+      .market td button:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+      .market small {
+        font-style: italic;
+        opacity: 0.75;
+      }
+
+      .modal {
+        position: absolute;
+        inset: 0;
+        background: rgba(60, 40, 15, 0.35);
+        display: grid;
+        place-items: center;
+      }
+      .card {
+        width: min(400px, calc(100% - 32px));
+        padding: 20px 24px;
+        text-align: center;
+      }
+      .card h2 {
+        margin: 0 0 8px;
+        font-weight: 600;
+        font-style: italic;
+      }
+      .card .buttons {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+        margin-top: 14px;
+      }
+
+      @media (max-width: 700px) {
+        .inspector {
+          bottom: auto;
+          top: 120px;
+          width: 200px;
+        }
+        .log {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="game"></canvas>
+    <div id="hud"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
