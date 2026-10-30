@@ -1,4 +1,4 @@
-import { canAfford, demolishError, needsText, placeError, prerequisiteMet, upgradeError } from '../sim/actions';
+import { canAfford, demolishError, needsText, placeError, prerequisiteMet, residentsFed, upgradeError } from '../sim/actions';
 import { DEFS, RESOURCES, type BuildingType, type Cost, type Resource, type Tier } from '../sim/buildings';
 import { hearthLevel, levelLabel, lockedText, MAX_LEVEL, settlementName, unlocksAt } from '../sim/progression';
 import { tenders } from '../sim/blight';
@@ -9,7 +9,8 @@ import { housingOf, workerSlots } from '../sim/jobs';
 import { patrolRadius, warriorsOf } from '../sim/military';
 import { depletes, FERTILE_BONUS, gatherBonus, gatherTiles, ironLeft, leftAt, MATERIAL, stockLeft, type Material } from '../sim/land';
 import { mannedTowers } from '../sim/monsters';
-import { holdsAt, stockAt } from '../sim/storage';
+import { holdsAt, stockAt, STORED } from '../sim/storage';
+import { LAPSE_DAYS } from '../sim/homes';
 import { isConnected } from '../sim/network';
 import { calendar, DAY_LENGTH, SEASONS, YEAR_LENGTH } from '../sim/seasons';
 import { LOT, TRADE_GOODS, tradeError } from '../sim/trade';
@@ -324,13 +325,16 @@ export class Hud {
       lines.push(`<h3>${def.name}</h3><div class="dim">${costText(def.tiers[0].cost)}</div>`);
       if (MATERIAL[tool.type] && !b) lines.push(gatherLine(w, tool.type, k, 'Would work'));
       lines.push(err ? `<div class="bad">${err}</div>` : '<div class="good">Click to build</div>');
+    } else if (tool?.kind === 'upgrade' && b?.order) {
+      lines.push(`<h3>→ ${DEFS[b.type].tiers[b.tier + 1].label}</h3><div class="warn">Click to cancel the upgrade (supplies go back to the stores)</div>`);
     } else if (tool?.kind === 'upgrade' && b) {
       const next = DEFS[b.type].tiers[b.tier + 1];
       const err = upgradeError(w, b);
       const reqs = next ? requirements(w, b, next) : { html: '', met: true };
       if (next) lines.push(`<h3>→ ${next.label}</h3><div class="dim">${costText(next.cost)}</div>${reqs.html}`);
       // Unmet requirements are already listed above; otherwise show what's left (cost, fire, max tier).
-      if (reqs.met) lines.push(err ? `<div class="bad">${err}</div>` : '<div class="good">Click to upgrade</div>');
+      if (next?.auto) lines.push(`<div class="dim">${err}</div>`);
+      else if (reqs.met) lines.push(err ? `<div class="bad">${err}</div>` : '<div class="good">Click to order the upgrade</div>');
     } else if (tool?.kind === 'demolish' && b) {
       const err = demolishError(b);
       lines.push(err ? `<div class="bad">${err}</div>` : '<div class="warn">Click to demolish (half refunded)</div>');
@@ -362,6 +366,10 @@ export class Hud {
         const occ = [...w.villagers.values()].filter((v) => v.home === b.id).length;
         lines.push(`<div>Residents ${occ}/${housing}</div>`);
       }
+      if (b.order) lines.push(orderLines(b));
+      const nextTier = def.tiers[b.tier + 1];
+      if (b.lapsed) lines.push(`<div class="bad">Needs unmet: falls back in ${LAPSE_DAYS - b.lapsed} day${LAPSE_DAYS - b.lapsed === 1 ? '' : 's'}</div>`);
+      if (nextTier?.auto && !b.order && !tool) lines.push(`<div class="dim">To become a ${nextTier.label}:</div>${requirements(w, b, nextTier).html}`);
       if (b.fire > 0) {
         lines.push(`<div class="bad">Burning ${Math.round(b.fire * 100)}%${wellCovers(w, b) ? ' · being doused' : ' · no well in reach!'}</div>`);
       }
@@ -504,13 +512,21 @@ export class Hud {
   }
 }
 
+// "Upgrading to Cottage: 6 / 15 wood · 10 / 10 stone"
+function orderLines(b: Building): string {
+  const next = DEFS[b.type].tiers[b.tier + 1];
+  const parts = STORED.filter((r) => next.cost[r]).map((r) => `${Math.floor(b.order!.supplies[r] ?? 0)} / ${next.cost[r]} ${r}`);
+  return `<div class="warn">Upgrading to ${next.label}</div><div class="dim">Supplies: ${parts.join(' · ') || 'none'}</div>`;
+}
+
 // Checklist for upgrading `b` into `next`: settlement level, population, nearby
 // buildings. The hearth also lists what its next level unlocks.
 function requirements(w: World, b: Building, next: Tier): { html: string; met: boolean } {
   const checks: [boolean, string][] = [];
   if (next.level) checks.push([hearthLevel(w) >= next.level, lockedText(next.level)]);
   if (next.pop) checks.push([w.villagers.size >= next.pop, `${next.pop} villagers (you have ${w.villagers.size})`]);
-  if (next.needs) checks.push([prerequisiteMet(w, b, next.needs), needsText(next.needs)]);
+  for (const needs of next.needs ?? []) checks.push([prerequisiteMet(w, b, needs), needsText(needs)]);
+  if (next.fed) checks.push([residentsFed(w, b), 'Residents fed from the pantry']);
   let html = checks.map(([ok, text]) => `<div class="${ok ? 'good' : 'bad'}">${ok ? '✓' : '✗'} ${text}</div>`).join('');
   if (b.type === 'hearth') html += `<div class="dim">Unlocks: ${unlocksAt(b.tier + 2).join(', ')}</div>`;
   return { html, met: checks.every(([ok]) => ok) };
@@ -563,7 +579,7 @@ function featureLines(w: World, k: string): string {
 function settlementStat(w: World): string {
   const level = hearthLevel(w);
   const h = hearth(w);
-  const ready = level < MAX_LEVEL && upgradeError(w, h) === null;
+  const ready = level < MAX_LEVEL && !h.order && upgradeError(w, h) === null;
   const title = ready ? `The hearth can become the ${levelLabel(level + 1)}` : `${levelLabel(level)}`;
   return `<span class="stat settlement ${ready ? 'ready' : ''}" title="${title}">${settlementName(level)}${ready ? ' ↑' : ''}</span>`;
 }

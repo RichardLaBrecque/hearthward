@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { place, upgrade } from '../src/sim/actions';
+import { place } from '../src/sim/actions';
 import { WARRIOR_STATS } from '../src/sim/combat';
 import { RECRUIT_INTERVAL, updateMilitary, warriorsOf } from '../src/sim/military';
 import { spawnRaid, updateMonsters } from '../src/sim/monsters';
 import { tick, TICK } from '../src/sim/tick';
-import { flatWorld, setGood } from './helpers';
+import { flatWorld, setGood, upgradeNow } from './helpers';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -45,7 +45,7 @@ describe('barracks', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.99);
     const { w, barracks } = garrisoned();
     run(w, RECRUIT_INTERVAL * 2 + 6);
-    expect(upgrade(w, barracks)).toBe(true);
+    expect(upgradeNow(w, barracks)).toBe(true);
     expect(warriorsOf(w, barracks).every((x) => x.hp === WARRIOR_STATS[1].hp)).toBe(true);
     run(w, RECRUIT_INTERVAL + 6);
     expect(warriorsOf(w, barracks)).toHaveLength(3);

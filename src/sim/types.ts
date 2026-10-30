@@ -12,6 +12,14 @@ export interface Building {
   blight: number; // farms only: 0 = healthy, 1 = withered
   links?: string[]; // roads only: neighboring road hexes this road is joined to
   stock?: Partial<Record<Resource, number>>; // goods held here: a store's stock or a home's pantry
+  order?: UpgradeOrder; // an upgrade waiting on its supplies
+  lapsed?: number; // homes: days in a row the current tier's needs went unmet
+}
+
+// An upgrade under way: porters deliver its supplies a load at a time, and the
+// tier changes when the last arrives. Coin is paid when the order is placed.
+export interface UpgradeOrder {
+  supplies: Partial<Record<Resource, number>>; // delivered so far
 }
 
 // Anything that walks hex to hex outside the villager road system.
@@ -64,6 +72,7 @@ export interface Haul {
   to: number;
   res: Resource;
   amount: number;
+  supply?: boolean; // delivering to an upgrade order, not a pantry or store
 }
 
 export interface Villager {

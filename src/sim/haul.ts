@@ -1,8 +1,10 @@
 // Porters keep goods moving: first they top up pantries in homes and barracks,
-// then they carry goods from the hearth and storehouses into dedicated stores.
+// then they supply upgrades under way, then they carry goods from the hearth
+// and storehouses into dedicated stores.
 // Porters on duty at the hearth or a storehouse do this, and so does anyone
 // without a job.
 import { keyDistance } from '../hex';
+import { supply, supplyNeeded } from './actions';
 import { DEFS, type Resource } from './buildings';
 import { isConnected } from './network';
 import { findPath } from './path';
@@ -29,7 +31,8 @@ export const PANTRY_DAYS = 3; // days of food porters keep in each home
 // houses leaves the hearth's own residents short.
 export const WOOD_DAYS = 1.5;
 const LOOK_INTERVAL = 1; // seconds between an idle hauler's looks for work
-const PANTRY_PRIORITY = 0; // pantries before tidying stores
+const PANTRY_PRIORITY = 0; // pantries, then upgrades, then tidying stores
+const SUPPLY_PRIORITY = 50;
 const STORE_PRIORITY = 100;
 
 export const canHaul = (w: World, v: Villager): boolean => {
@@ -39,12 +42,13 @@ export const canHaul = (w: World, v: Villager): boolean => {
 };
 
 // Goods already promised to errands under way, so porters don't double up.
-function promised(w: World, id: number, r: Resource, side: 'from' | 'to'): number {
+// Deliveries count separately for an upgrade order and for a pantry or store.
+function promised(w: World, id: number, r: Resource, side: 'from' | 'to', toOrder = false): number {
   let n = 0;
   for (const v of w.villagers.values()) {
     const h = v.haul;
     if (!h || h.res !== r) continue;
-    if (side === 'to' && h.to === id) n += v.carry?.amount ?? h.amount;
+    if (side === 'to' && h.to === id && !!h.supply === toOrder) n += v.carry?.amount ?? h.amount;
     if (side === 'from' && h.from === id && v.state === 'toPickup') n += h.amount;
   }
   return n;
@@ -79,13 +83,31 @@ function reserve(w: World, b: Building, r: Resource, days: number): number {
 const available = (w: World, b: Building, r: Resource, reserveDays: number): number =>
   stockAt(b, r) - promised(w, b.id, r, 'from') - reserve(w, b, r, reserveDays);
 
+// Upgrades never draw the settlement's stock below a few days of what its
+// people eat and burn, so a burst of orders can't leave homes short.
+export function supplyFloor(w: World, r: Resource): number {
+  if (r === 'food') return (w.villagers.size + w.warriors.length) * PANTRY_DAYS;
+  if (r === 'wood' && wantsWood(w)) {
+    const homes = new Set([...w.villagers.values()].map((v) => v.home).filter((h) => h !== null));
+    return homes.size * HEAT_PER_HOME * PANTRY_DAYS;
+  }
+  return 0;
+}
+
+// What upgrades may still take of `r`: stock above the floor, less loads already on their way.
+function spareForSupply(w: World, r: Resource): number {
+  let pending = 0;
+  for (const v of w.villagers.values()) if (v.haul?.supply && v.haul.res === r && !v.carry) pending += v.haul.amount;
+  return w.res[r] - supplyFloor(w, r) - pending;
+}
+
 // The best errand for this villager right now, or null.
 export function findTask(w: World, v: Villager): Haul | null {
   let best: { haul: Haul; score: number } | null = null;
-  const consider = (from: Building, to: Building, res: Resource, amount: number, priority: number) => {
+  const consider = (from: Building, to: Building, res: Resource, amount: number, priority: number, toOrder = false) => {
     if (amount < 1) return;
     const score = priority + keyDistance(v.at, from.at) + keyDistance(from.at, to.at);
-    if (!best || score < best.score) best = { haul: { from: from.id, to: to.id, res, amount }, score };
+    if (!best || score < best.score) best = { haul: { from: from.id, to: to.id, res, amount, ...(toOrder && { supply: true }) }, score };
   };
   const stores = connectedStores(w);
 
@@ -106,7 +128,22 @@ export function findTask(w: World, v: Villager): Haul | null {
     }
   }
 
-  // 2. Goods waiting at the hearth or a storehouse that a dedicated store could take.
+  // 2. Supplies for upgrades under way, one load at a time from the nearest store.
+  for (const b of w.buildings.values()) {
+    if (!b.order || !isConnected(w, b.id)) continue;
+    for (const r of STORED) {
+      const need = supplyNeeded(b, r) - promised(w, b.id, r, 'to', true);
+      const spare = need >= 1 ? spareForSupply(w, r) : 0;
+      if (spare < 1) continue;
+      // A store being upgraded (the hearth, say) can be supplied from its own stock.
+      const source = stores
+        .filter((s) => available(w, s, r, PANTRY_DAYS) >= 1)
+        .sort((a, c) => keyDistance(a.at, b.at) - keyDistance(c.at, b.at))[0];
+      if (source) consider(source, b, r, Math.min(PORTER_CARRY, need, spare, available(w, source, r, PANTRY_DAYS)), SUPPLY_PRIORITY, true);
+    }
+  }
+
+  // 3. Goods waiting at the hearth or a storehouse that a dedicated store could take.
   for (const from of stores) {
     if (!isGeneralStore(from)) continue;
     for (const r of STORED) {
@@ -172,7 +209,8 @@ function dropOff(w: World, v: Villager): void {
   const h = v.haul!;
   const to = w.buildings.get(h.to);
   if (v.carry) {
-    const left = v.carry.amount - (to && to.at === v.at ? put(w, to, v.carry.res, v.carry.amount) : 0);
+    const handOver = h.supply ? supply : put;
+    const left = v.carry.amount - (to && to.at === v.at ? handOver(w, to, v.carry.res, v.carry.amount) : 0);
     if (left > 0) store(w, v.carry.res, left, v.at);
   }
   v.carry = null;

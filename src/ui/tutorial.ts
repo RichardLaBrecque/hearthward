@@ -71,7 +71,8 @@ export const TUTORIAL: readonly TutorialStep[] = [
     title: 'The hamlet is yours',
     body:
       'That is the heart of it: roads carry everything, workers need a path home, and wells keep the flames down. ' +
-      'Next, build <b>Houses</b> to grow your people and <b>Farms</b> to feed them before winter comes.',
+      'Next, build <b>Houses</b> to grow your people and <b>Farms</b> to feed them before winter comes. ' +
+      'Houses improve on their own once a well, and later a chapel, stand nearby.',
   },
 ];
 

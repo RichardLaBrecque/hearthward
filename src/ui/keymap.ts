@@ -26,6 +26,7 @@ export const KEYMAP: Record<string, Command> = {
   g: build('granary'),
   t: build('market'),
   b: build('barracks'),
+  h: build('chapel'),
   u: { type: 'tool', tool: { kind: 'upgrade' } },
   x: { type: 'tool', tool: { kind: 'demolish' } },
   escape: { type: 'cancel' },

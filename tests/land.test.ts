@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { distance, hex, parseKey } from '../src/hex';
 import { generateFeatures, generateMap } from '../src/map';
-import { place, placeError, upgrade } from '../src/sim/actions';
+import { place, placeError } from '../src/sim/actions';
 import { claimDiscoveries, deplete, FOREST_STOCK, ironLeft, stockLeft } from '../src/sim/land';
 import { charterTerms, checkCharter, CHARTER_POP } from '../src/sim/progression';
 import { deserialize, serialize } from '../src/sim/save';
 import { tick, TICK } from '../src/sim/tick';
 import { blockedReason, cycleYield } from '../src/sim/villagers';
 import { hearth, spawnVillager } from '../src/sim/world';
-import { flatWorld, setGood } from './helpers';
+import { flatWorld, setGood, upgradeNow } from './helpers';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -119,8 +119,8 @@ describe('the Town Charter', () => {
     const cathedral = place(w, 'cathedral', '3,3')!;
     checkCharter(w);
     expect(w.won).toBe(false);
-    expect(upgrade(w, cathedral)).toBe(true); // nave
-    expect(upgrade(w, cathedral)).toBe(true); // spire
+    expect(upgradeNow(w, cathedral)).toBe(true); // nave
+    expect(upgradeNow(w, cathedral)).toBe(true); // spire
     checkCharter(w);
     expect(w.won).toBe(true);
   });

@@ -1,6 +1,7 @@
 import { strikeBlight, updateBlight } from './blight';
 import { igniteFires, updateFires } from './events';
 import { recedeFloods, startFlood } from './floods';
+import { updateHomes } from './homes';
 import { assignHomes, assignJobs, housingCapacity } from './jobs';
 import { calendar, DAY_LENGTH, WINTER } from './seasons';
 import type { World } from './types';
@@ -96,6 +97,8 @@ function newDay(w: World): void {
     log(w, 'The hearth has gone cold.', 'bad');
     return;
   }
+
+  updateHomes(w);
 
   const pop = w.villagers.size;
   if (

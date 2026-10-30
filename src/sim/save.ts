@@ -1,7 +1,7 @@
 import type { BuildingType, Resource } from './buildings';
 import { neighborKeys } from '../hex';
 import { isRoad, link, rebuildNetwork } from './network';
-import type { Building, Caravan, LogEntry, Monster, Villager, Warrior, World } from './types';
+import type { Building, Caravan, LogEntry, Monster, UpgradeOrder, Villager, Warrior, World } from './types';
 import { stockAt, store, STORED, syncTotals } from './storage';
 import { createWorld, hearth } from './world';
 
@@ -54,7 +54,18 @@ interface SaveData {
   over: boolean;
   res: Record<Resource, number>;
   revealed: string[];
-  buildings: { id: number; type: BuildingType; at: string; tier: number; workers: number[]; fire: number; blight?: number; links?: string[] }[];
+  buildings: {
+    id: number;
+    type: BuildingType;
+    at: string;
+    tier: number;
+    workers: number[];
+    fire: number;
+    blight?: number;
+    links?: string[];
+    order?: UpgradeOrder;
+    lapsed?: number;
+  }[];
   villagers: Pick<Villager, 'id' | 'at' | 'home' | 'job' | 'carry' | 'hunger' | 'cold'>[];
   log: LogEntry[];
   floods?: [string, number][];

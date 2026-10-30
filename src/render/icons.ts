@@ -18,6 +18,7 @@ export type Glyph =
   | 'longhouse'
   | 'moot-hall'
   | 'cottage'
+  | 'townhouse'
   | 'irrigated-field'
   | 'lumber-camp'
   | 'deep-quarry'
@@ -747,6 +748,67 @@ const GLYPHS: Record<Glyph, (ctx: Ctx) => void> = {
     ctx.moveTo(0.18, 0.1);
     ctx.lineTo(0.18, 0.26);
     ctx.stroke();
+  },
+  townhouse(ctx) {
+    // Two storeys of stone under a slate roof, a dormer and twin chimneys.
+    stoneWall(ctx, -0.44, -0.2, 0.88, 0.66);
+    ctx.beginPath();
+    ctx.moveTo(-0.44, 0.12);
+    ctx.lineTo(0.44, 0.12);
+    ctx.stroke();
+    for (const x of [-0.36, 0.24]) {
+      ctx.beginPath();
+      ctx.rect(x, -0.64, 0.12, 0.26);
+      fillStroke(ctx, STONE);
+    }
+    smoke(ctx, -0.3, -0.66);
+    ctx.beginPath();
+    ctx.moveTo(-0.54, -0.18);
+    ctx.lineTo(-0.3, -0.56);
+    ctx.lineTo(0.3, -0.56);
+    ctx.lineTo(0.54, -0.18);
+    ctx.closePath();
+    fillStroke(ctx, SLATE);
+    ctx.beginPath();
+    ctx.moveTo(-0.1, -0.24);
+    ctx.lineTo(0, -0.44);
+    ctx.lineTo(0.1, -0.24);
+    ctx.closePath();
+    fillStroke(ctx, SLATE);
+    for (const x of [-0.32, 0.18]) {
+      ctx.beginPath();
+      ctx.rect(x, -0.08, 0.14, 0.14);
+      fillStroke(ctx, LAMPLIGHT);
+    }
+    ctx.beginPath();
+    ctx.rect(0.2, 0.2, 0.14, 0.14);
+    fillStroke(ctx, LAMPLIGHT);
+    archDoor(ctx, 0.46, 0.18, 0.28, TIMBER);
+  },
+  chapel(ctx) {
+    // A small timber church: steep roof, bell turret and a cross.
+    ctx.beginPath();
+    ctx.rect(-0.36, -0.04, 0.72, 0.5);
+    fillStroke(ctx, PAPER);
+    ctx.beginPath();
+    ctx.moveTo(-0.46, -0.02);
+    ctx.lineTo(0, -0.42);
+    ctx.lineTo(0.46, -0.02);
+    ctx.closePath();
+    fillStroke(ctx, TIMBER);
+    ctx.beginPath();
+    ctx.rect(-0.08, -0.56, 0.16, 0.2);
+    fillStroke(ctx, PAPER);
+    ctx.beginPath();
+    ctx.moveTo(0, -0.56);
+    ctx.lineTo(0, -0.76);
+    ctx.moveTo(-0.07, -0.69);
+    ctx.lineTo(0.07, -0.69);
+    ctx.stroke();
+    archDoor(ctx, 0.46, 0.18, 0.28, TIMBER);
+    ctx.beginPath();
+    ctx.arc(0, 0.06, 0.06, 0, Math.PI * 2);
+    fillStroke(ctx, LAMPLIGHT);
   },
   'irrigated-field'(ctx) {
     // Furrows split by a blue channel, with sprouts standing tall.

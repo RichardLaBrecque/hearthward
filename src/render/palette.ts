@@ -39,6 +39,7 @@ export const BUILDING_WASH: Record<BuildingType, string> = {
   stoneyard: '#cbc3b1',
   oreshed: '#b9b5ad',
   cathedral: '#e6dcc3',
+  chapel: '#e3d8bd',
 };
 
 export const FLOOD_WASH = 'rgba(96,132,148,0.5)';

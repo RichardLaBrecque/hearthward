@@ -1,8 +1,9 @@
 import { hex, hexesInRange, key } from '../src/hex';
 import type { Terrain } from '../src/map';
+import { orderUpgrade, supply, supplyNeeded } from '../src/sim/actions';
 import { DEFS, type Resource } from '../src/sim/buildings';
-import { connectedStores, syncTotals } from '../src/sim/storage';
-import type { World } from '../src/sim/types';
+import { connectedStores, STORED, syncTotals, take } from '../src/sim/storage';
+import type { Building, World } from '../src/sim/types';
 import { createWorld, hearth } from '../src/sim/world';
 
 // A world on an all-grass map so tests don't depend on generated terrain. The
@@ -34,4 +35,13 @@ export function setGood(w: World, r: Resource, amount: number): void {
 
 export function setGoods(w: World, goods: Partial<Record<Resource, number>>): void {
   for (const [r, n] of Object.entries(goods)) setGood(w, r as Resource, n);
+}
+
+// Order an upgrade and hand over all its supplies from the stores at once, as
+// if porters had delivered them. True if the building reached the next tier.
+export function upgradeNow(w: World, b: Building): boolean {
+  const tier = b.tier;
+  if (!orderUpgrade(w, b)) return false;
+  for (const r of STORED) if (b.order) supply(w, b, r, take(w, r, supplyNeeded(b, r), b.at));
+  return b.tier > tier;
 }

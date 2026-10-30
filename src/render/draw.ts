@@ -2,7 +2,7 @@ import { hexCorners, hexesInRange, hexToPixel, neighborKeys, parseKey, type Poin
 import type { Terrain } from '../map';
 import { hash2, mulberry32 } from '../rng';
 import { demolishError, placeError, upgradeError } from '../sim/actions';
-import { DEFS, DIKE_RADIUS, TOWER_RADIUS, WELL_RADIUS, type BuildingType } from '../sim/buildings';
+import { CHAPEL_RADIUS, DEFS, DIKE_RADIUS, TOWER_RADIUS, WELL_RADIUS, type BuildingType } from '../sim/buildings';
 import { MONSTER_STATS, warriorStats } from '../sim/combat';
 import { patrolRadius } from '../sim/military';
 import { linked } from '../sim/network';
@@ -439,6 +439,16 @@ function drawBuilding(ctx: CanvasRenderingContext2D, w: World, b: Building, over
     meter(ctx, c, room ? held / room : 0, goods.length === 1 ? RESOURCE_WASH[goods[0]] : INK_SOFT, 0.9);
   }
 
+  // An upgrade under way: a gold arrow, and a meter of supplies delivered.
+  if (b.order) {
+    const next = DEFS[b.type].tiers[b.tier + 1]?.cost ?? {};
+    const goods = STORED.filter((r) => next[r]);
+    const need = goods.reduce((n, r) => n + next[r]!, 0);
+    const got = goods.reduce((n, r) => n + (b.order!.supplies[r] ?? 0), 0);
+    drawGlyph(ctx, 'upgrade', c.x - HEX_SIZE * 0.5, c.y - HEX_SIZE * 0.5, HEX_SIZE * 0.32);
+    meter(ctx, c, need ? got / need : 1, '#d9b95a', isStore(b) ? 0.78 : 0.9);
+  }
+
   if (b.blight > 0) {
     // Ink blots of rot creeping across the field.
     const h = parseKey(b.at);
@@ -575,6 +585,8 @@ function coverageFor(type: BuildingType | undefined, b: Building | undefined): {
       return { radius: WELL_RADIUS, color: 'rgba(70,110,130,0.16)' };
     case 'tower':
       return { radius: TOWER_RADIUS, color: 'rgba(168,116,26,0.14)' };
+    case 'chapel':
+      return { radius: CHAPEL_RADIUS, color: 'rgba(122,90,58,0.13)' };
     case 'dike':
       return { radius: DIKE_RADIUS, color: 'rgba(77,111,128,0.18)' };
     case 'barracks':
@@ -648,13 +660,14 @@ function drawHover(ctx: CanvasRenderingContext2D, w: World, ui: UiState): void {
     ctx.setLineDash([]);
   }
 
-  // Upgrading something with a prerequisite: show where qualifying buildings reach.
-  const needs = tool?.kind === 'upgrade' && hovered ? DEFS[hovered.type].tiers[hovered.tier + 1]?.needs : undefined;
-  if (needs) {
-    const color = coverageFor(needs.type, undefined)?.color ?? 'rgba(43,29,14,0.1)';
+  // Upgrading something with prerequisites: show where qualifying buildings reach.
+  const needs = tool?.kind === 'upgrade' && hovered ? DEFS[hovered.type].tiers[hovered.tier + 1]?.needs ?? [] : [];
+  for (const need of needs) {
+    const types: readonly BuildingType[] = typeof need.type === 'string' ? [need.type] : need.type;
+    const color = coverageFor(types[0], undefined)?.color ?? 'rgba(43,29,14,0.1)';
     for (const o of w.buildings.values()) {
-      if (o.type !== needs.type || !w.net.buildings.has(o.id)) continue;
-      for (const h of hexesInRange(parseKey(o.at), needs.within)) {
+      if (!types.includes(o.type) || !w.net.buildings.has(o.id)) continue;
+      for (const h of hexesInRange(parseKey(o.at), need.within)) {
         hexPath(ctx, hexToPixel(h, HEX_SIZE), HEX_SIZE);
         ctx.fillStyle = color;
         ctx.fill();
@@ -686,7 +699,7 @@ function drawHover(ctx: CanvasRenderingContext2D, w: World, ui: UiState): void {
 // Upgraded buildings get their own drawing so higher tiers read at a glance.
 const TIER_GLYPHS: Partial<Record<BuildingType, readonly Glyph[]>> = {
   hearth: ['hearth', 'longhouse', 'moot-hall'],
-  house: ['house', 'cottage'],
+  house: ['house', 'cottage', 'townhouse'],
   farm: ['farm', 'irrigated-field'],
   woodcutter: ['woodcutter', 'lumber-camp'],
   quarry: ['quarry', 'deep-quarry'],

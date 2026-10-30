@@ -2,7 +2,7 @@ import { hexToPixel, parseKey } from './hex';
 import { createSaveBackend, toggleFullscreen } from './platform';
 import type { Camera, Viewport } from './render/camera';
 import { HEX_SIZE, render } from './render/draw';
-import { demolish, joinRoads, place, upgrade } from './sim/actions';
+import { cancelUpgrade, demolish, joinRoads, orderUpgrade, place } from './sim/actions';
 import { deserialize, serialize } from './sim/save';
 import { TICK, tick } from './sim/tick';
 import { trade } from './sim/trade';
@@ -117,7 +117,12 @@ async function main(): Promise<void> {
           place(world, tool.type, k);
         }
       } else if (tool.kind === 'upgrade') {
-        if (b) upgrade(world, b);
+        // A click on a building with an order cancels it; a drag only places orders.
+        if (b?.order) {
+          if (!from) cancelUpgrade(world, b);
+        } else if (b) {
+          orderUpgrade(world, b);
+        }
       } else if (!from && b) {
         demolish(world, b);
       }

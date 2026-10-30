@@ -23,7 +23,8 @@ export type BuildingType =
   | 'cathedral'
   | 'woodshed'
   | 'stoneyard'
-  | 'oreshed';
+  | 'oreshed'
+  | 'chapel';
 
 export interface Tier {
   label: string;
@@ -36,15 +37,19 @@ export interface Tier {
   pantry?: Partial<Record<Resource, number>>; // homes and barracks: upkeep supplies kept on hand
   warriors?: number; // barracks: soldiers it keeps
   radius?: number; // barracks: patrol radius
-  needs?: Prerequisite; // must be met before upgrading into this tier
+  needs?: readonly Prerequisite[]; // nearby buildings required before upgrading into this tier
+  fed?: boolean; // homes: every resident ate from the pantry today
+  auto?: boolean; // homes: the building orders this tier itself when its needs are met, and loses it when they lapse
   level?: number; // hearth level required to upgrade into this tier
   pop?: number; // hearth tiers: villagers required
 }
 
-// A connected building of `type` within `within` hexes.
+// A connected building of `type` (or any of several types) within `within` hexes,
+// optionally one with a worker on duty.
 export interface Prerequisite {
-  type: BuildingType;
+  type: BuildingType | readonly BuildingType[];
   within: number;
+  staffed?: boolean;
 }
 
 export interface BuildingDef {
@@ -68,6 +73,8 @@ export interface BuildingDef {
 export const SETTLEMENT = ['Hamlet', 'Village', 'Town'] as const;
 
 export const WELL_RADIUS = 2;
+export const CHAPEL_RADIUS = 3;
+const SUPPLY_RADIUS = 4; // townhouses want a storehouse or trading post this close
 export const TOWER_RADIUS = 3;
 export const DIKE_RADIUS = 2;
 
@@ -104,10 +111,33 @@ export const DEFS: Record<BuildingType, BuildingDef> = {
     terrain: ['grass'],
     flammable: true,
     buildable: true,
-    blurb: 'Room for villagers. Burns 2 wood a day to stay warm in winter.',
+    blurb: 'Room for villagers. Burns 2 wood a day to stay warm in winter. Improves on its own with a well, a chapel and a store nearby.',
     tiers: [
       { label: 'Hut', cost: { wood: 10 }, housing: 3, pantry: { food: 10, wood: 10 } },
-      { label: 'Cottage', cost: { wood: 15, stone: 10 }, housing: 5, pantry: { food: 15, wood: 15 }, level: 2 },
+      {
+        label: 'Cottage',
+        cost: { wood: 15, stone: 10 },
+        housing: 5,
+        pantry: { food: 15, wood: 15 },
+        level: 2,
+        needs: [{ type: 'well', within: WELL_RADIUS }],
+        fed: true,
+        auto: true,
+      },
+      {
+        label: 'Townhouse',
+        cost: { wood: 20, stone: 20, iron: 5 },
+        housing: 7,
+        pantry: { food: 21, wood: 20 },
+        level: 3,
+        needs: [
+          { type: 'well', within: WELL_RADIUS },
+          { type: 'chapel', within: CHAPEL_RADIUS, staffed: true },
+          { type: ['storehouse', 'market'], within: SUPPLY_RADIUS },
+        ],
+        fed: true,
+        auto: true,
+      },
     ],
   },
   farm: {
@@ -125,7 +155,7 @@ export const DEFS: Record<BuildingType, BuildingDef> = {
         cost: { wood: 10, stone: 10 },
         workers: 3,
         yield: 3,
-        needs: { type: 'well', within: WELL_RADIUS },
+        needs: [{ type: 'well', within: WELL_RADIUS }],
         level: 2,
       },
     ],
@@ -168,6 +198,15 @@ export const DEFS: Record<BuildingType, BuildingDef> = {
     buildable: true,
     blurb: 'A small store for every good and a drop-off for workers. Its porters move goods on to dedicated stores and supply homes.',
     tiers: [{ label: 'Storehouse', cost: { wood: 20, stone: 5 }, workers: 2, stores: { food: 40, wood: 40, stone: 40, iron: 20 } }],
+  },
+  chapel: {
+    name: 'Chapel',
+    level: 2,
+    terrain: ['grass'],
+    flammable: true,
+    buildable: true,
+    blurb: 'A priest tends it. Houses within 3 hexes can grow into townhouses.',
+    tiers: [{ label: 'Chapel', cost: { wood: 30, stone: 20 }, workers: 1 }],
   },
   well: {
     name: 'Well',
@@ -322,6 +361,7 @@ export const BUILD_ORDER: readonly BuildingType[] = [
   'stoneyard',
   'oreshed',
   'well',
+  'chapel',
   'tower',
   'dike',
   'market',

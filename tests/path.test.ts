@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { place, upgrade } from '../src/sim/actions';
+import { place } from '../src/sim/actions';
 import { findPath } from '../src/sim/path';
 import { buildingAt } from '../src/sim/world';
-import { flatWorld } from './helpers';
+import { flatWorld, upgradeNow } from './helpers';
 
 describe('pathfinding', () => {
   it('walks along connected roads to a building', () => {
@@ -30,7 +30,7 @@ describe('pathfinding', () => {
     for (const k of ['1,0', '2,0', '3,0']) place(w, 'road', k);
     for (const k of ['1,-1', '2,-1', '3,-1', '4,-1']) {
       place(w, 'road', k);
-      upgrade(w, buildingAt(w, k)!);
+      upgradeNow(w, buildingAt(w, k)!);
     }
     place(w, 'farm', '4,0');
     w.pathCache.clear();

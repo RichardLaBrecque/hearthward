@@ -24,7 +24,7 @@ A new hamlet opens with a short guided tutorial in the top-left panel: lay a roa
 | Key | Action |
 | --- | --- |
 | 1–9, 0 | Road, House, Farm, Woodcutter, Quarry, Storehouse, Well, Watchtower, Dike, Fishery |
-| G / T / B | Granary, Trading Post, Barracks |
+| G / T / B / H | Granary, Trading Post, Barracks, Chapel |
 
 The toolbar groups build tools into tabs (Settle, Gather, Store & Trade, Defend, Great Works). Hotkeys work from any tab and jump to the tool's tab. A dot marks the tab holding the active tool, and a tab is dimmed while everything in it is locked.
 | U / X | Upgrade / Demolish tool |
@@ -64,25 +64,46 @@ Drag with the Road or Upgrade tool to paint along a path. Roads only join where 
 - **Trading Post and coin.** Every 4–7 days a caravan stops at a connected trading post and stays for 2 days. You buy and sell goods in lots of 10 for coin. Prices change from caravan to caravan, and every lot you buy or sell moves the price against you. Coin pays for the barracks upgrade.
 - **Barracks.** Each barracks invites warriors to the hearth, one every 15s, each costing 10 food to equip, until it has its full number. Warriors walk by road to their post and fight any monster inside the patrol radius. They can die, and the barracks replaces them. Every warrior eats 1 food a day. Upgrading to a Garrison (which costs coin) raises the number of warriors from 2 to 3, turns Militia into Men-at-arms (health 14→24, damage 3→5 per second), and widens the patrol radius from 4 to 5. More barracks means more warriors.
 
+## Upgrades are supplied
+
+An upgrade doesn't take its cost out of the stores all at once. Clicking a building with the Upgrade tool **orders** the next tier. Coin is paid when you order, since nobody carries it. Everything else is delivered by porters, one load at a time. The tier changes the moment the last supply arrives, and the building keeps working while it waits. A gold arrow and a supply meter mark a building with an order, and the inspector shows progress ("6 / 15 wood").
+
+- Supply errands rank below pantries and above tidying goods into dedicated stores.
+- Supplies are never taken below 3 days of what people eat (and, from autumn, burn), so a burst of orders can't leave homes short.
+- Click a building with an order to cancel it. Delivered supplies go back to the nearest stores and the coin is refunded.
+- Supplies waiting in a building are lost if it burns down or is demolished.
+
 ## Upgrade prerequisites
 
-Some upgrades need another building nearby as well as the materials. Prerequisites are set per tier with `needs` in `src/sim/buildings.ts`.
+Some upgrades need another building nearby. Prerequisites are set per tier with `needs` in `src/sim/buildings.ts`.
 
-| Upgrade | Needs | Cost |
+| Upgrade | Needs | Supplies |
 | --- | --- | --- |
 | Field → Irrigated field | A connected well within 2 hexes | 10 wood, 10 stone |
 
 When you hover with the Upgrade tool, the map shows where qualifying buildings reach.
 
+## Homes improve themselves
+
+Houses aren't upgraded by hand. Each day a house checks its surroundings. When its next tier's needs are all met, it orders that tier itself and porters supply it. When the needs of the tier it's at go unmet for 2 days in a row, it falls back one tier, and residents it can no longer hold move out to find another home. Hover a house to see what its next tier needs.
+
+| Tier | Houses | Needs | Supplies |
+| --- | --- | --- | --- |
+| Hut | 3 | A road to the hearth | (built: 10 wood) |
+| Cottage | 5 | Village level; a connected well within 2 hexes; every resident fed from the pantry today | 15 wood, 10 stone |
+| Townhouse | 7 | Town level; the Cottage's needs; a staffed **Chapel** within 3 hexes; a storehouse or Trading Post within 4 | 20 wood, 20 stone, 5 iron |
+
+The **Chapel** (Village level, key H, 30 wood and 20 stone) takes one priest.
+
 ## Settlement levels
 
-The hearth is the settlement's progression track. Use the Upgrade tool on it once you have the people and the materials. Each level houses more villagers and unlocks new buildings and upgrades. The top bar shows your settlement's name, with an ↑ when the hearth can be raised.
+The hearth is the settlement's progression track. Use the Upgrade tool on it once you have the people, and porters will supply it. Each level houses more villagers and unlocks new buildings and upgrades. The top bar shows your settlement's name, with an ↑ when the hearth can be raised.
 
 | Level | Hearth becomes | Needs | Unlocks |
 | --- | --- | --- | --- |
 | Hamlet | Hearth | (start) | Road, house, farm, woodcutter, quarry, well, watchtower, dike, barracks |
-| Village | Longhouse | 8 villagers, 40 wood, 20 stone | Storehouse, Trading Post, Irrigated field, Cottage, Cobble road, Lumber camp, Deep quarry |
-| Town | Moot Hall | 16 villagers, 60 wood, 50 stone, 30 coin | Granary, Stone granary, Garrison |
+| Village | Longhouse | 8 villagers, 40 wood, 20 stone | Storehouse, Trading Post, Chapel, Irrigated field, Cottage, Cobble road, Lumber camp, Deep quarry |
+| Town | Moot Hall | 16 villagers, 60 wood, 50 stone, 30 coin | Granary, Stone granary, Garrison, Townhouse |
 
 Requirements are data: a building's `level`, and a tier's `level`, `pop` and `needs`, in `src/sim/buildings.ts`.
 
@@ -105,7 +126,7 @@ Iron pays for the Garrison and the Cathedral. Caravans sometimes sell a little.
 
 1. Raise the hearth to the Moot Hall (Town).
 2. Grow to 30 folk.
-3. Complete the **Cathedral** (Town level): Foundations (40 wood, 60 stone), then the Nave (60 wood, 80 stone, 20 iron, 50 coin), then the Spire (100 stone, 40 iron, 100 coin), each stage raised with the Upgrade tool.
+3. Complete the **Cathedral** (Town level): Foundations (40 wood, 60 stone), then the Nave (60 wood, 80 stone, 20 iron, 50 coin), then the Spire (100 stone, 40 iron, 100 coin), each stage ordered with the Upgrade tool and supplied by porters.
 
 The top bar's **Charter** stat shows your progress. Hover it for the checklist.
 
@@ -123,7 +144,8 @@ Goods physically sit in buildings, and people carry them around.
 - **Workers** carry what they make to the nearest hearth or storehouse with room. They never take it to a dedicated store, and they stand idle when there is no room left.
 - **Porters** are jobs at the hearth (1, or 2 once it is raised) and at each storehouse (2). Villagers without a job help too. Their errands, in order:
   1. Keep **pantries** stocked: three days of food in each house and barracks, and from autumn, a day and a half of firewood in each house. People eat and keep warm from their own home's pantry. The hearth counts as a home: it keeps back what its residents need, and porters restock it from other stores when it runs low.
-  2. **Tidy goods** from the hearth and storehouses into dedicated stores. Granaries are only ever filled this way.
+  2. **Supply upgrades** under way, one load at a time, leaving 3 days of upkeep in the stores.
+  3. **Tidy goods** from the hearth and storehouses into dedicated stores. Granaries are only ever filled this way.
 - Porter posts are filled after producing jobs. If nobody at all is free to haul, one worker is reassigned to portering.
 - **Losing a store loses its goods.** Raiders carry off a share of what the building they hit actually holds, and a store that burns loses its stock. Building costs come out of the stores nearest the site.
 
