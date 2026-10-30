@@ -395,6 +395,12 @@ function drawBuilding(ctx: CanvasRenderingContext2D, w: World, b: Building, over
   ctx.strokeStyle = INK;
   ctx.lineWidth = 1.4;
   ctx.stroke();
+  // Upgraded buildings get a double-ruled border.
+  if (b.tier > 0) {
+    hexPath(ctx, c, HEX_SIZE * 0.74);
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+  }
 
   drawGlyph(ctx, glyphFor(b), c.x, c.y - 1, HEX_SIZE * 0.62);
 
@@ -677,9 +683,22 @@ function drawHover(ctx: CanvasRenderingContext2D, w: World, ui: UiState): void {
   }
 }
 
-const CATHEDRAL_STAGES: Glyph[] = ['cathedral-foundations', 'cathedral-nave', 'cathedral'];
+// Upgraded buildings get their own drawing so higher tiers read at a glance.
+const TIER_GLYPHS: Partial<Record<BuildingType, readonly Glyph[]>> = {
+  hearth: ['hearth', 'longhouse', 'moot-hall'],
+  house: ['house', 'cottage'],
+  farm: ['farm', 'irrigated-field'],
+  woodcutter: ['woodcutter', 'lumber-camp'],
+  quarry: ['quarry', 'deep-quarry'],
+  granary: ['granary', 'stone-granary'],
+  woodshed: ['woodshed', 'lumber-yard'],
+  stoneyard: ['stoneyard', 'stone-depot'],
+  barracks: ['barracks', 'garrison'],
+  fishery: ['fishery', 'fishing-fleet'],
+  cathedral: ['cathedral-foundations', 'cathedral-nave', 'cathedral'],
+};
 
-const glyphFor = (b: Building): Glyph => (b.type === 'cathedral' ? CATHEDRAL_STAGES[b.tier] : b.type);
+const glyphFor = (b: Building): Glyph => TIER_GLYPHS[b.type]?.[b.tier] ?? b.type;
 
 // Discoveries on revealed land: fertile valleys get a golden wash; ruins,
 // homesteads and iron veins get a mark until they're claimed or built on.
