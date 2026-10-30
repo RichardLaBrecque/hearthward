@@ -27,7 +27,7 @@ import { groupOf, TOOL_GROUPS } from './toolGroups';
 import { advanceTutorial, TUTORIAL, tutorialStep, type TutorialWatch } from './tutorial';
 
 const LOG_VISIBLE = 6;
-const LOG_FADE = 40; // sim seconds
+const LOG_FADE = DAY_LENGTH * 2; // sim seconds for an entry to fade to its dimmest
 const ICON_PX = 30;
 
 export interface HudActions {
@@ -42,6 +42,12 @@ export interface HudActions {
 
 export const costText = (cost: Cost): string =>
   RESOURCES.filter((r) => cost[r]).map((r) => `${cost[r]} ${r}`).join(', ') || 'free';
+
+// "Spr 3": the season and day an entry was written.
+const when = (t: number): string => {
+  const c = calendar(t);
+  return `${SEASONS[c.season].slice(0, 3)} ${c.dayOfSeason + 1}`;
+};
 
 const cap = (s: string): string => s[0].toUpperCase() + s.slice(1);
 const esc = (s: string): string => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]!);
@@ -70,6 +76,11 @@ export class Hud {
   private trend = new Trend();
   private modal = el('div', 'modal hidden');
   private tutorial = el('div', 'tutorial panel hidden');
+  private chronicleOpen = true; // folded, the chronicle shows only its latest entry
+  // Built once, so the toggle isn't replaced under the cursor as entries fade.
+  private logPage = el('div', 'page');
+  private logToggle = el('button', 'toggle');
+  private logEntries = el('div', 'entries');
   private watch: TutorialWatch = { woodLow: Infinity };
   private buttons: { def: ToolButton; node: HTMLButtonElement }[] = [];
   private cache = new Map<HTMLElement, string>();
@@ -102,6 +113,14 @@ export class Hud {
       if (!t) return;
       const [good, dir] = t.dataset.trade!.split(':') as [TradeGood, 'buy' | 'sell'];
       this.actions.trade(good, dir);
+    });
+    const title = el('h3', '');
+    title.append('Chronicle', this.logToggle);
+    this.logPage.append(title, this.logEntries);
+    this.log.append(this.logPage);
+    this.logToggle.addEventListener('click', () => {
+      this.chronicleOpen = !this.chronicleOpen;
+      if (this.lastWorld) this.updateLog(this.lastWorld);
     });
     this.tutorial.addEventListener('click', (e) => {
       const act = (e.target as HTMLElement).closest<HTMLElement>('[data-act]')?.dataset.act;
@@ -278,14 +297,24 @@ export class Hud {
     const market = this.marketHtml(w);
     this.set(this.market, market);
     this.market.classList.toggle('hidden', !market);
-    this.set(
-      this.log,
-      w.log
-        .slice(-LOG_VISIBLE)
-        .filter((e) => w.time - e.time < LOG_FADE)
-        .map((e) => `<div class="msg ${e.tone}" style="opacity:${1 - ((w.time - e.time) / LOG_FADE) * 0.7}">${esc(e.text)}</div>`)
-        .join(''),
-    );
+    this.updateLog(w);
+  }
+
+  // Newest first; older entries fade but stay legible. Folded, just the latest.
+  private updateLog(w: World): void {
+    const open = this.chronicleOpen;
+    const entries = w.log
+      .slice(open ? -LOG_VISIBLE : -1)
+      .reverse()
+      .map((e) => {
+        const age = Math.min(1, (w.time - e.time) / LOG_FADE);
+        return `<div class="msg ${e.tone}" style="opacity:${(1 - age * 0.55).toFixed(2)}"><span class="when">${when(e.time)}</span>${esc(e.text)}</div>`;
+      })
+      .join('');
+    this.logPage.classList.toggle('folded', !open);
+    this.logToggle.textContent = open ? '▴' : '▾';
+    this.logToggle.title = open ? 'Show only the latest entry' : 'Show recent entries';
+    this.set(this.logEntries, entries || '<div class="msg dim">Nothing of note yet.</div>');
   }
 
   private updateTutorial(w: World): void {
