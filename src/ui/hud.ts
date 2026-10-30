@@ -52,6 +52,10 @@ interface ToolButton {
 
 export class Hud {
   private top = el('div', 'topbar panel');
+  // Separate nodes so the season bar ticking doesn't rebuild the buttons under the cursor.
+  private stats = el('div', 'group');
+  private calendar = el('div', 'group calendar');
+  private controls = el('div', 'group');
   private tools = el('div', 'toolbar panel');
   private inspector = el('div', 'inspector panel');
   private log = el('div', 'log');
@@ -69,6 +73,7 @@ export class Hud {
 
   constructor(root: HTMLElement, private actions: HudActions) {
     root.append(this.top, this.tools, this.inspector, this.log, this.market, this.tip, this.modal);
+    this.top.append(this.stats, this.calendar, this.controls);
     this.buildToolbar();
     // Hover cards for the top bar's numbers.
     this.top.addEventListener('mouseover', (e) => {
@@ -220,7 +225,7 @@ export class Hud {
   update(w: World, ui: UiState): void {
     this.lastWorld = w;
     this.trend.sample(w);
-    this.set(this.top, this.topHtml(w, ui));
+    this.updateTop(w, ui);
     this.showTip();
     const active = toolKey(ui.tool);
     const level = hearthLevel(w);
@@ -252,17 +257,22 @@ export class Hud {
     );
   }
 
-  private topHtml(w: World, ui: UiState): string {
+  private updateTop(w: World, ui: UiState): void {
     const cal = calendar(w.time);
     const speedBtns = SPEEDS.map(
       (s, i) => `<button data-act="speed${i}" class="${!ui.paused && ui.speedIndex === i ? 'on' : ''}">${s}×</button>`,
     ).join('');
-    return (
-      `<div class="group">${settlementStat(w)}${ledgerCells(w, this.trend)}</div>` +
-      `<div class="group calendar season-${cal.season}"><span>${SEASONS[cal.season]} · Day ${cal.dayOfSeason + 1} · Year ${cal.year}</span>` +
-      `<div class="bar"><div style="width:${(cal.seasonProgress * 100).toFixed(1)}%"></div></div></div>` +
-      `<div class="group"><button data-act="pause" class="${ui.paused ? 'on' : ''}" title="Pause (Space)">❙❙</button>${speedBtns}` +
-      `<button data-act="new" title="Found a new hamlet">New</button></div>`
+    this.set(this.stats, settlementStat(w) + ledgerCells(w, this.trend));
+    this.calendar.className = `group calendar season-${cal.season}`;
+    this.set(
+      this.calendar,
+      `<span>${SEASONS[cal.season]} · Day ${cal.dayOfSeason + 1} · Year ${cal.year}</span>` +
+        `<div class="bar"><div style="width:${(cal.seasonProgress * 100).toFixed(1)}%"></div></div>`,
+    );
+    this.set(
+      this.controls,
+      `<button data-act="pause" class="${ui.paused ? 'on' : ''}" title="Pause (Space)">❙❙</button>${speedBtns}` +
+        `<button data-act="new" title="Found a new hamlet">New</button>`,
     );
   }
 
